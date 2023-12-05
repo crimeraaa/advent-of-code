@@ -59,6 +59,12 @@ struct List {
     int *end; // hold a pointer to the last nonzero element for later
 };
 
+static inline void update_list(struct List *plist, int value) {
+    plist->array[plist->index] = value;
+    plist->end = &plist->array[plist->index];
+    plist->index++;
+}
+
 // Get the leftmost and rightmost numbers represented as digits or strings.
 // Builds substring and constantly compares to SPELLINGS array.
 int match_numbers(const char *buffer, size_t length) {
@@ -71,10 +77,7 @@ int match_numbers(const char *buffer, size_t length) {
         char c = buffer[i];
         if (isdigit(c)) {
             // Adjust for ASCII encoding, need the actual value not char
-            // printf("%i, ", c - '0'); // ! DEBUG ONLY
-            list.array[list.index] = c - '0';
-            list.end = &list.array[list.index];
-            list.index++;
+            update_list(&list, c - '0');
             continue;
         }
         // Build substring char by char, index++ return prev. val. b4 incr.
@@ -82,10 +85,7 @@ int match_numbers(const char *buffer, size_t length) {
         // If got match, prep for reset
         int matched = match_spelling(writer);
         if (matched) {
-            // printf("(%i), ", matched); // ! DEBUG ONLY
-            list.array[list.index] = matched;
-            list.end = &list.array[list.index];
-            list.index++;
+            update_list(&list, matched);
             // Clear string so we don't use old information on next checks
             memset(writer, 0, sizeof(writer)); 
             index = 0;
