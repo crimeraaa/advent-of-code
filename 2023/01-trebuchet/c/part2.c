@@ -41,9 +41,7 @@ int match_spelling(const char *buffer) {
         const char *spelling = SPELLINGS[i];
         // Check if `buffer` contains substring `spelling`. Totally safe!
         // char *match = strstr(buffer, spelling);
-        const char *match = get_substring(buffer, spelling);
-        if (match != NULL) {
-            // printf("%s", match); // ! DEBUG ONLY
+        if (get_substring(buffer, spelling) != NULL) {
             // Add 1 to 0-based index to get value represented by this word
             return i + 1;
         }
@@ -59,6 +57,7 @@ struct List {
     int *end; // hold a pointer to the last nonzero element for later
 };
 
+// pls optimize kthxbai (dereferences pointer alot so maybe a lil slow)
 static inline void update_list(struct List *plist, int value) {
     plist->array[plist->index] = value;
     plist->end = &plist->array[plist->index];
@@ -89,7 +88,7 @@ int match_numbers(const char *buffer, size_t length) {
             // Clear string so we don't use old information on next checks
             memset(writer, 0, sizeof(writer)); 
             index = 0;
-            // Start new string at last char, for `twone`, `oneight`, etc.
+            // Start string at last char, e.g. for `twone`, `oneight`, etc.
             writer[index++] = c;
         }
     }
@@ -97,7 +96,7 @@ int match_numbers(const char *buffer, size_t length) {
 }
 
 int main(int argc, char *argv[]) {
-    const char *name = (argc == 2) ? argv[1] : "./part2.txt";
+    const char *name = (argc == 2) ? argv[1] : "../part2.txt";
     FILE *file = fopen(name, "r");
     if (!file) {
         eprintf("Failed to open file!");
@@ -111,9 +110,8 @@ int main(int argc, char *argv[]) {
     while (fgets(buffer, BUFFERSIZE, file) != NULL) {
         // strcspn gets index of the first occurence of any char in 2nd arg
         buffer[strcspn(buffer, "\r\n")] = '\0';
-        // printf("%i : %s\n\t", count++, buffer); // ! DEBUG ONLY
         int matched = match_numbers(buffer, strlen(buffer));
-        // printf("\n\t%i\n", matched); // ! DEBUG ONLY
+        printf("%i: %s\t%i\n", count++, buffer, matched);
         sum += matched;
     }
     printf("Calibration Value: %i\n", sum);

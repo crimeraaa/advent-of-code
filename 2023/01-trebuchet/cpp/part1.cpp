@@ -26,7 +26,7 @@ int match_numbers(const std::string &line) {
 
 int main(int argc, char *argv[]) {
     // Totally safe
-    const char *name = (argc == 2) ? argv[1] : "./part1.txt";
+    const char *name = (argc == 2) ? argv[1] : "../part1.txt";
     // Open file and test if we actually got a handle
     std::ifstream file(name);
     if (!file.is_open()) {
@@ -35,12 +35,12 @@ int main(int argc, char *argv[]) {
     }
     // Read one line at a time
     std::string line;
+    int count = 1; // line number
     int sum = 0;
     // Use std::getline as an iterator of sorts
     while (std::getline(file, line)) {
         int first_last = match_numbers(line);
-        // ! DEBUG PURPOSES ONLY
-        // std::printf("line: '%s', digits: %i\n", line.c_str(), first_last);
+        std::printf("%i : %s\t%i\n", count++, line.c_str(), first_last);
         sum += first_last;
     }
     std::printf("Final answer: %i\n", sum);

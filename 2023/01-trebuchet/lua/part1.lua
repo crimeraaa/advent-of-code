@@ -1,4 +1,4 @@
-local fp = assert(io.open(arg[1] or "./input.txt", "r"))
+local fp = assert(io.open(arg[1] or "../part1.txt", "r"))
 local count = 1
 local sum = 0
 
@@ -9,7 +9,7 @@ local function printf(fmt, ...)
 end
 
 ---@param line string
-local function find_numbers(line)
+local function match_numbers(line)
     -- start of string capture nearest digit, non-greedy skip non-digits before us
     local _, _, left = line:find("^[%D]-(%d)")
     -- end of string capture nearest digit, non-greedy skip non-digits after us
@@ -19,8 +19,8 @@ end
 
 for line in fp:lines("*l") do
     if (line ~= "") then 
-        local left, right = find_numbers(line)
-        printf("%i : '%s', Digits: %i, %i\n", count, line, left, right)
+        local left, right = match_numbers(line)
+        printf("%i : '%s'\t%i, %i\n", count, line, left, right)
         count = count + 1
         -- We want to treat 1 and 2 as 12, 7 and 7 as 77, etc.
         sum = sum + (left * 10) + right;

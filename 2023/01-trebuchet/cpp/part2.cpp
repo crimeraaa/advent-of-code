@@ -60,10 +60,9 @@ int match_numbers(const std::string &line) {
     return (digits.at(0) * 10) + digits.at(digits.size() - 1);
 }
 
-
 int main(int argc, char *argv[]) {
     // Totally safe
-    const char *name = (argc == 2) ? argv[1] : "./part2.txt";
+    const char *name = (argc == 2) ? argv[1] : "../part2.txt";
     // Get file handle and validate it
     std::ifstream file(name);
     if (!file.is_open()) {
@@ -72,10 +71,11 @@ int main(int argc, char *argv[]) {
     }
     // Read one line at a time
     std::string line;
+    int count = 1; // line number
     int sum = 0;
     while (std::getline(file, line)) {
         int digits = match_numbers(line);
-        std::printf("%s : %i\n", line.c_str(), digits);
+        std::printf("%i : %s\t%i\n", count++, line.c_str(), digits);
         sum += digits;
     }
     std::printf("Calibration Value: %i\n", sum);

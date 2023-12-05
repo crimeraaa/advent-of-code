@@ -1,4 +1,4 @@
-local file = assert(io.open(arg[1] or "./part2.txt", "r"))
+local file = assert(io.open(arg[1] or "../part2.txt", "r"))
 
 local SPELLINGS = {
     ["one"] = 1,
@@ -21,13 +21,13 @@ end
 -- Checks if any part of `capture` is found in the global `SPELLINGS` table.
 -- 
 -- Prolly causes our algorithm to grow quadratically in time taken :) 
-local function is_number_spelling(capture)
+local function match_spelling(capture)
     for spelling, value in pairs(SPELLINGS) do
-        if string.match(capture, spelling) then
-            return spelling, value
+        if string.find(capture, spelling) then
+            return value
         end
     end
-    return nil
+    return 0
 end
 
 -- Match digits or string literals representing numbers.
@@ -45,9 +45,9 @@ local function match_numbers(line)
         else
             -- Build our test string letter by letter
             test = test .. letter
-            local spelling, value = is_number_spelling(test)
+            local value = match_spelling(test)
             -- Update captures table and reset test string for next checks
-            if (spelling and value) then
+            if value > 0 then
                 table.insert(captures, value)
                 -- Set to be the last letter in case we wanna match a collison
                 -- e.g. "twone": test = "two" =>  test = "o"
@@ -68,9 +68,9 @@ end
 local sum = 0
 local count = 0
 for line in file:lines("*l") do
-    -- ! DEBUG PURPOSES ONLY
-    -- printf("%i : '%s'\n", count, line)
-    sum = sum + match_numbers(line)
+    local matched = match_numbers(line)
+    printf("%i : '%s'\t%i\n", count, line, matched)
+    sum = sum + matched
     count = count + 1
 end
 printf("Calibration Value: %i\n", sum)

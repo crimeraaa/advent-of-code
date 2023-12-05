@@ -33,7 +33,7 @@ int match_numbers(const char *buffer, const int length) {
 
 int main(int argc, char *argv[]) {
     // totally safe!
-    const char *name = (argc == 2) ? argv[1] : "./part1.txt";
+    const char *name = (argc == 2) ? argv[1] : "../part1.txt";
     FILE *file = fopen(name, "r");
     if (!file) {
         eprintf("Failed to open file!");
