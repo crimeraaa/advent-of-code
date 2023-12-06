@@ -26,7 +26,6 @@ function tokenize_game(line)
 
     -- Remainder of string after game# + remove leading/trailing whitespace
     local sets = line:sub(stop + 1):trim()
-    local game = {}
     
     -- Don't capture leading/trailing whitepaces!
     -- Semicolon separated sets
@@ -34,26 +33,14 @@ function tokenize_game(line)
         local results = {red = 0, green = 0, blue = 0}
         -- Comma spearated elements
         for cubes in set:gmatch("%s?([^,]+)%s?") do 
-            -- match a char-only sequence
+            -- match char-only seq and given our inputs it can only be a color.
+            ---@type "red"|"green"|"blue"
             local color = cubes:match("[^%a]-(%a+)") 
-            -- match a digit-only squence
-            local count = tonumber(cubes:match("([%d]+)[^%d]-")) 
-            results[color] = results[color] + count
-        end
-        table.insert(game, results)
-    end
-
-    for i, set in ipairs(game) do
-        -- printf("Set %i: %i red, %i green, %i blue\n", 
-        --         i, 
-        --         set.red, 
-        --         set.green, 
-        --         set.blue)
-        for color, count in pairs(set) do
-            if (count > BAG[string.upper(color)]) then
-                -- printf("Game %i is not possible!\n", gamenumber)
-                -- printf("Set %i has %i %s cubes.\n", i, count, color)
-                return 0
+            -- match digit-only seq.
+            local count = cubes:match("([%d]+)[^%d]-") 
+            -- Spelling of colors are the same so adjust for case
+            if tonumber(count) > BAG[string.upper(color)] then
+                return 0 -- still need to update `sum` in main
             end
         end
     end
@@ -64,13 +51,9 @@ end
 ---@param argv string[]
 function main(argc, argv)
     local file = assert(io.open(argv[1] or "../part1.txt", "r"))
-    local sum = 0
-    local number = 1
+    local sum = 0 -- sum of game numbers that fit criteria of bag
     for line in file:lines("*l") do
-        -- printf("Line %i:\t\"%s\"\n", number, line)
-        sum = sum + tokenize_game(line)
-        -- printf("\n")
-        number = number + 1
+        sum = sum + tokenize_game(line) -- update w/ current game no. or 0
     end
     printf("Sum: %i\n", sum)
     file:close()
