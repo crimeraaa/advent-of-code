@@ -1,18 +1,7 @@
+require("helpers")
+
 -- What games would be possible if this were the contents of the bag?
 BAG = {RED = 12, GREEN = 13, BLUE = 14}
-
----@param fmt string
----@param ... string|number
-function printf(fmt, ...)
-    io.stdout:write(fmt:format(...))
-end
-
--- Remove leading and trailing whitespaces from the string.
----@param subject string
----@nodiscard
-function string.trim(subject)
-    return subject:gsub("^%s+", ""):gsub("%s+$", "")
-end
 
 -- Get the game number if it fits the criteria of the bag, else 0.
 ---@param line string
