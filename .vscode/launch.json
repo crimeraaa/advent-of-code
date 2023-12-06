@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${fileDirname}/${fileBasenameNoExtension}.exe",
-            "args": ["Hi mom!", "mom"],
+            "args": ["${fileDirname}/../part1.txt"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],
