@@ -1,29 +1,38 @@
 require("helpers")
 
-ELF_BAG = {RED = 12, GREEN = 13, BLUE = 14}
-
 ---@param line string
 local function tokenize_game(line)
-    local colon = line:find(":") -- 1-based index of `:` in subject string `line`
-    local id = tonumber(line:sub(0, colon - 1):match("[%d]+"))
+    -- 1-based index of `:` in subject string `line`
+    local colon = line:find(":") 
+    -- digit part of `"Game <number>:"`
+    local id = tonumber(line:sub(0, colon - 1):match("[%d]+")) 
+    -- Remainder of string after "Game <number>:", leading whitespace removed
     local data = line:sub(colon + 1):trim()
+    -- Minimum #cubes of each color needed for this game to be possible
+    local game = {red = 0, green = 0, blue = 0}
     printf("Game <%i>: \"%s\"\n", id, data)
-    local sets = data:split(";")
-    for i, set in ipairs(sets) do
+    -- Semicolon separated sets
+    for i, set in ipairs(data:split(";")) do
         printf("\tSet %i: \"%s\"\n", i, set)
-        local cubes = set:split(",")
-        for j, cube in ipairs(cubes) do
-            local count = tonumber(cube:match("%d+"))
-            local color = cube:match("[^%a](%a+)")
+        -- Comma separated elements in each set
+        for j, cube in ipairs(set:split(",")) do
+            -- Regex-heavy but less so than before
+            local count = tonumber(cube:match("%d+")) -- digit-only sequence
+            local color = cube:match("%a+") -- (C `char` type)-only sequence
             printf("\t\tCube %i: count = %i, color = %s\n", j, count, color)
-            if count > ELF_BAG[color:upper()] then
-                printf("\t\tNot valid!\n")
-                return 0
+            -- Update game minimum #cube requirement for this game to be possible
+            if count > game[color] then
+                game[color] = count
             end
         end
     end
+    print("\tMinimum Required Cubes for this game to be possible:")
+    for k, v in pairs(game) do
+        print("\t", k, v)
+    end
     printf("\n")
-    return id
+    -- Power of set of cubes
+    return game.red * game.green* game.blue
 end
 
 -- I can't let go of C and C can't let go of me
@@ -31,13 +40,12 @@ end
 ---@param argv string[]
 local function main(argc, argv)
     -- TODO Replace fallback with "../part2.txt"
-    local fallback = "C:/Users/crimeraaa/repos/advent-of-code/2023/02-cube-conundrum/part1.txt"
-    local file = assert(io.open(argv[1] or fallback, "r"))
-    local sum = 0
+    local file = assert(io.open(argv[1] or "../part1.txt", "r"))
+    local sum = 0 -- sum of all games's cube power
     for line in file:lines("*l") do
         sum = sum + tokenize_game(line)
     end
-    printf("Sum: %i\n", sum)
+    printf("Total Cube Power: %i\n", sum)
     file:close()
     return 0
 end
