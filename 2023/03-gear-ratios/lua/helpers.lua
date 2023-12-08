@@ -5,41 +5,19 @@ function printf(fmt, ...)
     io.stdout:write(fmt:format(...))
 end
 
--- Remove leading and trailing whitespaces from the string.
--- Modifying the standard library is frowned upon but whatever :)
----@param subject string
----@nodiscard
-function string.trim(subject)
-    return subject:gsub("^%s+", ""):gsub("%s+$", "")
-end
-
--- Creates a string array of based off of `subject`.
--- We separate the strings based on the chars in `separators`.
----@param subject string
----@param separators string
-function string.split(subject, separators)
-    ---@type string[]
-    local tokens = {}
-    local start = 0 -- substring start index, update as we go
-    local match = 0 -- substring end index, update as we go
-    -- Pictured: abuse of Lua's implementation of boolean types, ugly but works!
-    while match ~= nil do
-        match = subject:find(separators, start)
-        local substr = subject:sub(start, match and match - 1):trim()
-        table.insert(tokens, substr)
-        start = (match and match + 1) or start
-    end
-    return tokens
-end
-
--- Opens a file with `filename` for reading and dumps its lines into a `string[]`.
+-- Opens a file with `filename` for reading and dumps each line, char by char.
 ---@param filename string 
 function readfile(filename)
     local file = assert(io.open(filename), "r")
-    local dump = {} ---@type string[]
+    local matrix = {} ---@type string[][]
+    local lineno = 1
     for line in file:lines("*l") do
-        table.insert(dump, line)
+        matrix[lineno] = {} -- new line to split up into chars
+        for char in line:gmatch(".") do
+            table.insert(matrix[lineno], char)
+        end
+        lineno = lineno + 1
     end
     file:close()
-    return dump
+    return matrix
 end
