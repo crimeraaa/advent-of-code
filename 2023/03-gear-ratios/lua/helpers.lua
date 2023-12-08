@@ -31,3 +31,15 @@ function string.split(subject, separators)
     end
     return tokens
 end
+
+-- Opens a file with `filename` for reading and dumps its lines into a `string[]`.
+---@param filename string 
+function readfile(filename)
+    local file = assert(io.open(filename), "r")
+    local dump = {} ---@type string[]
+    for line in file:lines("*l") do
+        table.insert(dump, line)
+    end
+    file:close()
+    return dump
+end
