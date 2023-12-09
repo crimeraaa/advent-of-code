@@ -1,0 +1,6 @@
+---@alias int integer
+---@alias num number Or maybe we should use float? flt?
+---@alias str string
+---@alias bool boolean
+---@alias tbl table
+-- `fun` is already used as parameter functions so I think that's ok

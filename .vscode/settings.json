@@ -72,5 +72,12 @@
         "variant": "cpp",
         "regex": "cpp",
         "bitset": "cpp"
-    }
+    },
+    "Lua.diagnostics.disable": [
+        "lowercase-global",
+        "trailing-space",
+        "need-check-nil",
+        "trailing-space",
+        // "duplicate-set-field"
+    ]
 }
