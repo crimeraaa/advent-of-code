@@ -18,8 +18,10 @@ function get_cardlist(filename)
     end
     assert(file, errmsg)
     local lines = {} ---@type string[]
+    local index = 1
     for line in file:lines() do
-        lines[#lines + 1] = line
+        lines[index] = line -- supposedly faster than calling `#` operator alot
+        index = index + 1 -- tbh I just like this more for some reason
     end
     file:close()
     return lines
