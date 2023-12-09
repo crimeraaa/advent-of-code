@@ -2,7 +2,7 @@ require("helpers")
 
 ---@param winning str
 ---@param playing str
-local function tally_winnings(winning, playing)
+local function get_linescore(winning, playing)
     local score = 0
     printf("\nMatch : ")
     -- Need word boundary, otherwise we'll match single digits everywhere!
@@ -27,6 +27,16 @@ local function tally_winnings(winning, playing)
     return score
 end
 
+---@param lines str[]
+---@param loop_body function
+local function tally_winnings(lines, loop_body)
+    local points = 0
+    for _, line in ipairs(lines) do
+        points = points + loop_body(line)
+    end
+    return points
+end
+
 ---@param argc int
 ---@param argv str[]
 local function main(argc, argv)
@@ -35,21 +45,18 @@ local function main(argc, argv)
         printf("Usage: lua %s [puzzle_input].txt", argv[0])
         return 1
     end
-    
-    local lines = get_cardlist((argc == 1 and argv[1]) or "sample.txt")
-    local points = 0
-    
     -- Left side is winning numbers, right side is your numbers.
     -- first match is worth 1 point, every match afterwards doubles that value.
-    for _, line in ipairs(lines) do
+    local lines = get_cardlist((argc == 1 and argv[1]) or "sample.txt")
+    local points = tally_winnings(lines, function(line)
         local colon = line:find(":")
         local barline = line:find("|")
         local winning = line:sub(colon + 1, barline - 1)
         local playing = line:sub(barline + 1)
-        local score = tally_winnings(winning, playing)
+        local score = get_linescore(winning, playing)
         printf("%s - score: %i\n", line, score)
-        points = points + score
-    end
+        return score
+    end)
     -- 27742 not right, too high
     -- EDIT: Was 26346
     printf("\n<POINTS>: %i\n", points)
