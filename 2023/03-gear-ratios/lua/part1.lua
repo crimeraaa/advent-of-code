@@ -54,27 +54,26 @@ end
 ---@param line string[] An element indexed from `matrix` (`string[][]`)
 ---@param column integer Index into `line` as if that were a char array.
 ---@param direction -1|1 Pass `PEEK_LEFT` or `PEEK_RIGHT`.
----@param closure fun(digit: integer) Update extarnal values.
+---@param closure fun(digit: integer, offset: integer) Update extarnal values.
 local function loop_peekoffset(line, column, direction, closure)
     local digit = 1
-    local peekoffset = direction -- start off -1 or 1 so we offset already
+    local offset = direction -- start off -1 or 1 so we offset already
     while (true) do
-        digit = tonumber(line[column + peekoffset])
+        digit = tonumber(line[column + offset])
         if not digit then
             break
         end
-        closure(digit)
-        peekoffset = peekoffset + direction -- works for both + and -
+        closure(digit, offset)
+        offset = offset + direction -- works for both + and -
     end
 end
 
--- TODO: Get part numbers directly adjacent/diagonal to non '.' symbols
 ---@param argc integer
 ---@param argv string[]
 local function main(argc, argv)
     -- argv[0] isn't counted in the `#` operator count
     if (argc ~= 0) and (argc ~= 1) then
-        printf("Too many arguments! Got %i, need 0 or 1.\n", argc)
+        printf("Got %i arguments, please only pass exactly 0 or 1.\n", argc)
         printf("Usage: lua %s [filepath]\n", argv[0])
         return 1
     end
@@ -83,11 +82,11 @@ local function main(argc, argv)
     -- Gear symbol characters, line numbers and column numbers
     local gears = {} ---@type Symbol[]
     
-    printf("\nPrinting out <schematic>, constructing <symbols> and <numbers>:\n")
+    printf("\n<SCHEMATIC>:\n")
     loop_matrix(matrix, function(row, col, char) -- Create a closure!
         printf("%s ", char)
-        local digit = tonumber(char) -- convert so we can do math
-        if (not digit) and (char ~= ".") then
+        local is_digit = tonumber(char) -- convert so we can do math
+        if (not is_digit) and (char ~= ".") then
             ---@type Symbol
             local t = {lineno = row, column = col, value = char}
             -- insert in order of [L]eft to [R]ight, going [U]p to [D]own.
@@ -98,29 +97,35 @@ local function main(argc, argv)
     printf("\n")
     
     -- Walk back through cells adjacent to the current cell (matrix)
-    printf("Printing <symbols>:\n")
+    printf("Printing <SYMBOLS> and adjacent <PARTNUMBERS>:\n")
+
+    -- If we visited a part number already, don't reconstruct it.
+    local visited = new_2Dboolarray(#matrix, #matrix[1])
+    local sum = 0
     loop_gearsymbols(gears, function(lineno, column) -- create a closure!
         local part_number = tonumber(matrix[lineno][column])
         -- Current cell (our "center") isn't even a number? Don't bother!
-        if not part_number then
+        if (not part_number) or visited[lineno][column] then
             return
         end
         local place_value = 10 -- part_number is the 1's place already
 
         -- Update part number going left requires correct place value.
-        loop_peekoffset(matrix[lineno], column, PEEK_LEFT, function(digit)
+        loop_peekoffset(matrix[lineno], column, PEEK_LEFT, function(digit, offset)
+            visited[lineno][column + offset] = true
             part_number = part_number + (digit * place_value)
             place_value = place_value * 10
         end)
 
         -- Update part number going right, which is much simpler than left!
-        loop_peekoffset(matrix[lineno], column, PEEK_RIGHT, function(digit)
+        loop_peekoffset(matrix[lineno], column, PEEK_RIGHT, function(digit, offset)
+            visited[lineno][column + offset] = true
             part_number = (part_number * 10) + digit
         end)
-
+        sum = sum + part_number
         printf("%i (@%i:%i), ", part_number, lineno, column)
     end)
-    printf("\n")
+    printf("\n<SUM>: %s\n", sum)
     return 0
 end
 
