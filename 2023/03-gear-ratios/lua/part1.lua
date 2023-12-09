@@ -1,5 +1,8 @@
 require("helpers")
 
+PEEK_LEFT = -1
+PEEK_RIGHT = 1
+
 ---@class Symbol
 ---@field lineno integer 
 ---@field column integer Index into the line.
@@ -21,29 +24,47 @@ local function new_2Dboolarray(width, height)
 end
 
 ---@param matrix string[][]
----@param loop_body fun(row: integer, col: integer, char: string)
-local function loop_matrix(matrix, loop_body)
+---@param closure fun(row: integer, col: integer, char: string) Update external values.
+local function loop_matrix(matrix, closure)
     for row, line in ipairs(matrix) do -- vertical indexes
         for col, char in ipairs(line) do -- horizontal indexes
-            loop_body(row, col, char)
+            closure(row, col, char)
         end
         printf("\n")
     end
 end
 
----@param gearsymbols Symbol[]
----@param loop_body fun(lineno: integer, column: integer)
-local function loop_gearsymbols(gearsymbols, loop_body)
-    for _, gear in ipairs(gearsymbols) do
-        printf("line:%i:%i = '%s': Got ", gear.lineno, gear.column, gear.value)
+---@param gears Symbol[]
+---@param closure fun(lineno: integer, column: integer) Update external values.
+local function loop_gearsymbols(gears, closure)
+    for _, gear in ipairs(gears) do
+        printf("line:%i:%i = '%s': ", gear.lineno, gear.column, gear.value)
         for y = -1, 1 do -- For offset reasons we need to start at -1
             local lineno = y + gear.lineno -- offset lineno index into matrix
             for x = -1, 1 do 
                 local column = x + gear.column -- offset col index into line
-                loop_body(lineno, column)
+                closure(lineno, column)
             end
         end
         printf("\n")
+    end
+end
+
+-- Look at cells to the left and right of our part number.
+---@param line string[] An element indexed from `matrix` (`string[][]`)
+---@param column integer Index into `line` as if that were a char array.
+---@param direction -1|1 Pass `PEEK_LEFT` or `PEEK_RIGHT`.
+---@param closure fun(digit: integer) Update extarnal values.
+local function loop_peekoffset(line, column, direction, closure)
+    local digit = 1
+    local peekoffset = direction -- start off -1 or 1 so we offset already
+    while (true) do
+        digit = tonumber(line[column + peekoffset])
+        if not digit then
+            break
+        end
+        closure(digit)
+        peekoffset = peekoffset + direction -- works for both + and -
     end
 end
 
@@ -59,13 +80,8 @@ local function main(argc, argv)
     end
     local matrix = readfile((argc == 1 and argv[1]) or "./part1.txt")
 
-    -- Symbol characters, line numbers and column numbers
-    local gearsymbols = {} ---@type Symbol[]
-    -- Constructed part numbers, line numbers and line index
-    local partnumbers = {} ---@type Symbol[]
-
-    local is_writing_partnumber = false
-    local partnumber = 0
+    -- Gear symbol characters, line numbers and column numbers
+    local gears = {} ---@type Symbol[]
     
     printf("\nPrinting out <schematic>, constructing <symbols> and <numbers>:\n")
     loop_matrix(matrix, function(row, col, char) -- Create a closure!
@@ -75,86 +91,35 @@ local function main(argc, argv)
             ---@type Symbol
             local t = {lineno = row, column = col, value = char}
             -- insert in order of [L]eft to [R]ight, going [U]p to [D]own.
-            table.insert(gearsymbols, t)
-        elseif digit then
-            -- Not writing a part number but found the first digit
-            if not is_writing_partnumber then
-                is_writing_partnumber = true
-            end
-            -- Prev is number place greater than current
-            partnumber = (partnumber * 10) + digit
-        else
-            -- Writing a part number but found first non-digit, so end here
-            if is_writing_partnumber then
-                is_writing_partnumber = false
-                ---@type Symbol
-                local t = {lineno = row, column = col, value = partnumber}
-                table.insert(partnumbers, t)
-                partnumber = 0 -- Need else we mess up the next partnumber!
-            end
+            table.insert(gears, t)
         end
         -- Newline is printed right outside this loop body's scope
     end)
     printf("\n")
-
-    ---@param line string[]
-    ---@param column integer Index into `line` as if that were a char array.
-    ---@param direction -1|1 -1 is for left, 1 is for right.
-    ---@param partnumber_constructor fun(digit: integer)
-    local function loop_peek(line, column, direction, partnumber_constructor)
-        local digit = tonumber(line[column])
-        if not digit then
-            return
-        end
-        local peekoffset = direction -- internal so we don't lose the original
-        while (digit) do
-            digit = tonumber(line[column - peekoffset])
-            peekoffset = peekoffset + direction -- works for both + and -
-        end
-    end
     
-    -- Walk back to adjacent cells
+    -- Walk back through cells adjacent to the current cell (matrix)
     printf("Printing <symbols>:\n")
-    loop_gearsymbols(gearsymbols, function(lineno, column) -- create a closure!
-        -- Walk back through the main matrix
-        local digit = tonumber(matrix[lineno][column])
-        if not digit then
+    loop_gearsymbols(gears, function(lineno, column) -- create a closure!
+        local part_number = tonumber(matrix[lineno][column])
+        -- Current cell (our "center") isn't even a number? Don't bother!
+        if not part_number then
             return
         end
-        -- Construct part number to the left
-        local offset = 1
-        local part_number = 0
-        local place_value = 1
-        while (digit) do
-            -- Constructing a number backwards requires a bit of work!
+        local place_value = 10 -- part_number is the 1's place already
+
+        -- Update part number going left requires correct place value.
+        loop_peekoffset(matrix[lineno], column, PEEK_LEFT, function(digit)
             part_number = part_number + (digit * place_value)
-            digit = tonumber(matrix[lineno][column - offset])
-            -- Digit ot left of us is more significant
-            offset = offset + 1
             place_value = place_value * 10
-        end
+        end)
 
-        -- Construct part number to the right
-        offset = 1
-        while (true) do
-            digit = tonumber(matrix[lineno][column + offset])
-            if not digit then
-                break
-            end
+        -- Update part number going right, which is much simpler than left!
+        loop_peekoffset(matrix[lineno], column, PEEK_RIGHT, function(digit)
             part_number = (part_number * 10) + digit
-            -- Digit to right of us is more significant
-            offset = offset + 1
-        end
+        end)
 
-        -- Combine
-        printf("%i (line%i:%i), ", part_number, lineno, column)
+        printf("%i (@%i:%i), ", part_number, lineno, column)
     end)
-    printf("\n")
-
-    printf("Printing <numbers>:\n")
-    for _, partnum in ipairs(partnumbers) do
-        printf("line:%i:%i = %i\n", partnum.lineno, partnum.column, partnum.value)
-    end
     printf("\n")
     return 0
 end
