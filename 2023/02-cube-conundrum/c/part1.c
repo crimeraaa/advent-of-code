@@ -49,7 +49,7 @@ bool game_elem_result(const char *elem_start, const char *elem_end)
     return true;
 }
 
-bool game_split_elems(int setno, const char *sets, const char *semi)
+bool game_split_cubes(int setno, const char *sets, const char *semi)
 {
     int count = 1;
     const char *comma = NULL;
@@ -80,7 +80,7 @@ bool game_split_sets(const char *sets, const char *endl)
             semi = endl;
         }
         // ptrdiff_t setlen = semi - set; // Substr. length w/o semi
-        if (!game_split_elems(setno, sets, semi)) {
+        if (!game_split_cubes(setno, sets, semi)) {
             return false;
         }
 
@@ -94,7 +94,7 @@ bool game_split_sets(const char *sets, const char *endl)
 // Tests if the given game matches the elf's criteria.
 // @param line String containing this game's sets, elements and results.
 // @return Game ID if matched the criteria, else 0.
-int game_fits_criteria(const char *line) 
+int game_evaluate(const char *line) 
 {
     const char *endl = strchr(line, '\0');
     const char *colon = strchr(line, ':');
@@ -128,17 +128,22 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE + 1;
     }
 
-    struct StrVector *lines = cri_strvec_new(file);
+    struct StrVector *lines = cri_strvec_new();
     if (lines == NULL) {
         fclose(file);
-        eprintf("Failed allocate memory for lines vector.");
         return EXIT_FAILURE + 2;
+    }
+
+    if (!cri_readfile(file, lines)) {
+        cri_strvec_delete(lines);
+        fclose(file);
+        return EXIT_FAILURE + 3;
     }
 
     int sum = 0;
     for (int i = 0; i < lines->index; i++) {
         char *line = lines->buffer[i];
-        sum += game_fits_criteria(line);
+        sum += game_evaluate(line);
     }
     printf("<SUM>: %i\n", sum);
 

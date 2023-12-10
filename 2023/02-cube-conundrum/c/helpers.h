@@ -34,11 +34,10 @@ struct StrVector {
 
 /**
  * Allocates memory for a StrVector instance to hold the contents of `file`.
- * @param file File to read lines from and store in our vector.
  * @return Handle to your instance, or NULL.
  * @note If any allocation fails, all memory allocated by this is freed.
  */
-struct StrVector *cri_strvec_new(FILE *file);
+struct StrVector *cri_strvec_new(void);
 
 /**
  * Frees all memory associated with your StrVector instance.

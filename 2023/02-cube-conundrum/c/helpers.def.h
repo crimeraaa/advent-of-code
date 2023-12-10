@@ -14,22 +14,21 @@
 
 /******************** MEMBER "METHOD" IMPLEMENTATION **************************/
 
-struct StrVector *cri_strvec_new(FILE *file)
+struct StrVector *cri_strvec_new(void)
 {
-    struct StrVector *lines = malloc(sizeof(*lines));
-    if (lines == NULL) {
+    struct StrVector *vec = malloc(sizeof(*vec));
+    if (vec == NULL) {
         return NULL;
     }
-    lines->index = 0; 
-    lines->size = BUFFERSIZE;
-    lines->buffer = malloc(sizeof(*(lines->buffer)) * lines->size);
-    if (lines->buffer == NULL || !cri_readfile(file, lines)) {
-        free(lines->buffer); // Freeing NULL is a no-op
-        free(lines);
-        eprintf("Failed to allocate or resize lines buffer.");
+    vec->index = 0; 
+    vec->size = BUFFERSIZE;
+    vec->buffer = malloc(sizeof(*(vec->buffer)) * vec->size);
+    if (vec->buffer == NULL) {
+        free(vec);
+        eprintf("Failed to allocate memory for vector buffer.");
         return NULL;
     }
-    return lines;
+    return vec;
 }
 
 void cri_strvec_delete(struct StrVector *vec)
@@ -85,7 +84,7 @@ bool cri_readendl(int c, FILE *stream)
     if (c == '\r' && (c = fgetc(stream)) != EOF) {
         // Char after the CR wasn't LF and for ungetc: EOF == can't pushback 
         if (c != '\n' && (ungetc(c, stream)) == EOF) { 
-            eprintf("Failed to read line-end with CR ('\\r') .");
+            eprintf("Failed to read line-ending with CR ('\\r') .");
             return false;
         }
     }
@@ -149,6 +148,7 @@ bool cri_readfile(FILE *file, struct StrVector *vec)
     while (ftell(file) != EOF_POSITION) {
         char *line = cri_readline(file);
         if (!cri_strvec_push(vec, line)) {
+            eprintf("Could not read input file completely.");
             return false;
         }
     }
