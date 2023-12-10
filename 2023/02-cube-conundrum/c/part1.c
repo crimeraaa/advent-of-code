@@ -1,8 +1,9 @@
-#include <ctype.h>
+#include <ctype.h> // isdigit
 #include <stdbool.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
+#include <stddef.h> // ptrdiff_t
+#include <stdlib.h> // malloc family, NULL
+#include <stdio.h> // printf family, FILE*, f_ family
+#include <string.h> // str_ family
 
 // Header-only cause I cannot be bothered to deal with translatoin units today
 #define CRI_IO_HELPERS_IMPL 1
@@ -13,7 +14,14 @@
 #define ELF_CRITERIA_BLUE   14
 
 // Hardcoded cause VSCode debugger uses workspace as CWD
-#define FALLBACK "C:/Users/crimeraaa/repos/advent-of-code/2023/02-cube-conundrum"
+#ifdef _WIN32
+#define FALLBACK_DIRECTORY \
+"C:/Users/crimeraaa/repos/advent-of-code/2023/02-cube-conundrum/"
+#else
+// Remember that Linux has a vastly different file system.
+#define FALLBACK_DIRECTORY \
+"/home/crimeraaa/repos/advent-of-code/2023/02-cube-conundrum/"
+#endif
 
 bool game_elem_result(const char *elem_start, const char *elem_end)
 {
@@ -113,7 +121,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    const char *filename = (argc == 2) ? argv[1] : FALLBACK "./sample.txt";
+    const char *filename = (argc == 2) ? argv[1] : FALLBACK_DIRECTORY "sample.txt";
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
         eprintf("Failed to open input file.");
