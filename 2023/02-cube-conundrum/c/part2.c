@@ -7,39 +7,13 @@
 
 // Header-only cause I cannot be bothered to deal with translatoin units today
 #define CRI_IO_HELPERS_IMPL 1
-#include <helpers.h> // Pass -I../.. or /I"./.. or --include=../.. flag
-
-enum CUBE_COLOR_INFO {
-    CUBE_COLOR_RED, 
-    CUBE_COLOR_GREEN, 
-    CUBE_COLOR_BLUE, 
-    // CUBE_COLOR_COUNT,
-    // CUBE_COLOR_INVALID
-};
-
-struct Cube {
-    int count;
-    enum CUBE_COLOR_INFO color; // Use enum CUBE_COLOR_INFO
-};
-
-struct Set {
-    struct Cube red, green, blue;
-};
-
-// Hardcoded cause VSCode debugger uses workspace as CWD
-#ifdef _WIN32
-#define FALLBACK_DIRECTORY \
-"C:/Users/crimeraaa/repos/advent-of-code/2023/02-cube-conundrum/"
-#else
-// Remember that Linux has a vastly different file system.
-#define FALLBACK_DIRECTORY \
-"/home/crimeraaa/repos/advent-of-code/2023/02-cube-conundrum/"
-#endif
+#include <helpers.h> // Pass -I../.. or /I../.. or --include=../.. flag
+#include "cube-conundrum.h"
 
 // Determines the count and color of this cube in the set.
-struct Cube game_get_cube(const char *elem_start, const char *elem_end)
+Cube game_get_cube(const char *elem_start, const char *elem_end)
 {
-    struct Cube cube = {0};
+    Cube cube = {0};
     const char *elem = elem_start;
     char c;
     while (elem < elem_end && (c = *elem) && isdigit(c)) {
@@ -63,9 +37,9 @@ struct Cube game_get_cube(const char *elem_start, const char *elem_end)
 }
 
 // Tallies the current semicolon separated set.
-struct Set game_get_set(int setno, const char *sets, const char *semi)
+Set game_get_set(int setno, const char *sets, const char *semi)
 {
-    struct Set current = {0};
+    Set current = {0};
     const char *comma = NULL;
     printf("Set %i: ", setno); // ! DEBUG
     while (comma < semi) {
@@ -74,7 +48,7 @@ struct Set game_get_set(int setno, const char *sets, const char *semi)
         if (comma == NULL || comma >= semi) {
             comma = semi;
         }
-        struct Cube cube = game_get_cube(sets, comma);
+        Cube cube = game_get_cube(sets, comma);
         switch (cube.color)
         {
             case CUBE_COLOR_RED: {
@@ -99,7 +73,7 @@ struct Set game_get_set(int setno, const char *sets, const char *semi)
 // Determines the minimum number of cubes per color needed for this game.
 int game_get_power(const char *sets, const char *endl)
 {
-    struct Set total = {0};
+    Set total = {0};
     const char *semi = NULL;
     int setno = 1;
     while ((semi < endl) && (sets != NULL)) {
@@ -110,7 +84,7 @@ int game_get_power(const char *sets, const char *endl)
         // ptrdiff_t setlen = semi - set; // Substr. length w/o semi
 
         // Split the current set into its cube counts.
-        struct Set set = game_get_set(setno, sets, semi);
+        Set set = game_get_set(setno, sets, semi);
         // Update all 3 separately
         if (set.red.count > total.red.count) {
             total.red.count = set.red.count;
@@ -162,7 +136,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE + 1;
     }
 
-    struct StrVector *lines = cri_strvec_new();
+    StrVector *lines = cri_strvec_new();
     if (lines == NULL) {
         exitcode = EXIT_FAILURE + 2;
         goto FILE_CLEANUP;

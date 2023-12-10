@@ -77,7 +77,8 @@
 			"typeinfo": "cpp",
 			"variant": "cpp",
 			"regex": "cpp",
-			"bitset": "cpp"
+			"bitset": "cpp",
+			"__bit_reference": "c"
 		}
 	}
 }

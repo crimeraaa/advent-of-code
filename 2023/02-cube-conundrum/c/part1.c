@@ -7,83 +7,105 @@
 
 // Header-only cause I cannot be bothered to deal with translatoin units today
 #define CRI_IO_HELPERS_IMPL 1
-#include <helpers.h> // Pass -I../.. or /I"./.. or --include=../.. flag
+#include <helpers.h> // Pass -I../.. or /I../.. or --include=../.. flag
+#include "cube-conundrum.h"
 
-#define ELF_CRITERIA_RED    12
-#define ELF_CRITERIA_GREEN  13
-#define ELF_CRITERIA_BLUE   14
-
-// Hardcoded cause VSCode debugger uses workspace as CWD
-#ifdef _WIN32
-#define FALLBACK_DIRECTORY \
-"C:/Users/crimeraaa/repos/advent-of-code/2023/02-cube-conundrum/"
-#else
-// Remember that Linux has a vastly different file system.
-#define FALLBACK_DIRECTORY \
-"/home/crimeraaa/repos/advent-of-code/2023/02-cube-conundrum/"
-#endif
-
-bool game_elem_result(const char *elem_start, const char *elem_end)
+/** 
+ * Determine output string to use.
+ * @param color_id Preferably pass in `(Cube) cube.color`
+*/
+const char *game_get_color(CUBE_COLOR_INFO color_id)
 {
+    switch (color_id)
+    {
+        case CUBE_COLOR_RED:    return "red"; 
+        case CUBE_COLOR_GREEN:  return "green";
+        case CUBE_COLOR_BLUE:   return "blue";
+    }
+    return "(null)";
+}
+
+Cube game_get_cube(const char *elem_start, const char *elem_end)
+{
+    Cube cube = {0};
     const char *elem = elem_start;
-    int count = 0;
     char c;
+    // Construct a number going right
     while (elem < elem_end && (c = *elem) && isdigit(c)) {
-        count = (count * 10) + c - '0';
+        cube.count = (cube.count * 10) + c - '0';
         elem++;
     }
-    const char *color = strchr(elem, ' ') + 1;
+    const char *color = strchr(elem, ' ') + 1; // 1st non-digit
     ptrdiff_t length = elem_end - color;
+
     // ! DEBUG
-    printf("count = %i, color = \"%.*s\"\n", count, (int)length, color);
+    // printf("count = %i, color = \"%.*s\"\n", cube.count, (int)length, color);
 
     // Since color points to the remainder of the original string,
     // limit the comparison via our substring's determined length.
-    if (strncmp("red", color, length) == 0 && count > ELF_CRITERIA_RED) {
-        return false;
-    } else if (strncmp("green", color, length) == 0 && count > ELF_CRITERIA_GREEN) {
-        return false;
-    } else if (strncmp("blue", color, length) == 0 && count > ELF_CRITERIA_BLUE) {
-        return false;
+    // ? This is ugly, but it's one of the only ways to do this in C.
+    if (strncmp("red", color, length) == 0) {
+        cube.color = CUBE_COLOR_RED;
+    } else if (strncmp("green", color, length) == 0) {
+        cube.color = CUBE_COLOR_GREEN;
+    } else if (strncmp("blue", color, length) == 0) {
+        cube.color = CUBE_COLOR_BLUE;
     }
-    return true;
+    
+    printf("%i %s, ", cube.count, game_get_color(cube.color)); // ! DEBUG
+    return cube;
 }
 
-bool game_split_cubes(int setno, const char *sets, const char *semi)
+// Compares the current cube to the elf's criteria.
+bool game_validate_cube(const Cube cube)
 {
-    int count = 1;
+    switch (cube.color)
+    {
+        case CUBE_COLOR_RED:    return cube.count <= ELF_CRITERIA_RED;
+        case CUBE_COLOR_GREEN:  return cube.count <= ELF_CRITERIA_GREEN;
+        case CUBE_COLOR_BLUE:   return cube.count <= ELF_CRITERIA_BLUE;
+    }
+    return false;
+}
+
+// Determines if this set fits the elf's criteria.
+bool game_get_set(const char *sets, const char *semi)
+{
     const char *comma = NULL;
     while (comma < semi) {
-        // ! DEBUG
-        printf("set@%i:%i: ", setno, count++);
         comma = strchr(sets, ','); // point to char after comma
-        // `sets` still points most of the original string so clip `comma`!
+        // `sets` still points most of the original string so clip to `semi`!
         if (comma == NULL || comma >= semi) {
             comma = semi;
         }
-        // Need to evaluate separately so function call is guaranteed
-        if (!game_elem_result(sets, comma)) {
+        
+        Cube cube = game_get_cube(sets, comma);
+        if (!game_validate_cube(cube)) {
             return false;
         }
+        
         sets = strchr(comma, ' ') + 1;
     }
     return true;
 }
 
-bool game_split_sets(const char *sets, const char *endl)
+bool game_evalute_sets(const char *sets, const char *endl)
 {
     const char *semi = NULL;
     int setno = 1;
     while ((semi < endl) && (sets != NULL)) {
+        printf("set %i: ", setno);
         semi = strchr(sets, ';'); // points to exact position in string
         if (semi == NULL) {
-            semi = endl;
+            semi = endl; // Must be the very last set
         }
         // ptrdiff_t setlen = semi - set; // Substr. length w/o semi
-        if (!game_split_cubes(setno, sets, semi)) {
+
+        bool set_fits_criteria = game_get_set(sets, semi);
+        printf("\n"); // ! DEBUG: slightly prettier debug printout
+        if (!set_fits_criteria) {
             return false;
         }
-
         // Find whitespace after semi and point to char past that
         sets = strchr(semi + 1, ' ') + 1; // point to start of next element
         setno++;
@@ -91,27 +113,31 @@ bool game_split_sets(const char *sets, const char *endl)
     return true;
 }
 
-// Tests if the given game matches the elf's criteria.
-// @param line String containing this game's sets, elements and results.
-// @return Game ID if matched the criteria, else 0.
-int game_evaluate(const char *line) 
+// Tests if given game matches the elf's criteria and sums up all valid games.
+int game_get_sum(char **lines, int linecount)
 {
-    const char *endl = strchr(line, '\0');
-    const char *colon = strchr(line, ':');
-    const char *sets = strchr(colon, ' ') + 1; // ptr to very first set's char
-    int game_id = 0;
-    // ptrdiff_t gameinfo_len = colon - line; // Substr. length w/o colon
-    sscanf(line, "Game %d:", &game_id);
-    printf("Game %d : \"%s\"\n", game_id, sets);
-    bool is_possible = game_split_sets(sets, endl);
-    // ! DEBUG
-    if (game_split_sets(sets, endl)) {
-        printf("<VALID>: This game met the elf's criteria!\n");
-    } else {
-        printf("<INVALID>: This game exceeded 1/more of the elf's criteria!\n");
+    int sum = 0;
+    for (int i = 0; i < linecount; i++) {
+        const char *line = lines[i];
+        const char *endl = strchr(line, '\0');
+        const char *colon = strchr(line, ':');
+        // ptr to very first set's char
+        const char *sets = strchr(colon, ' ') + 1; 
+        int game_id = 0;
+        // ptrdiff_t gameinfo_len = colon - line; // Substr. length w/o colon
+        sscanf(line, "Game %d:", &game_id); // dangerous but I'm lazy
+
+        printf("<GAME> %d: %s\n", game_id, sets);
+        bool game_fits_criteria = game_evalute_sets(sets, endl);
+        if (game_fits_criteria) {
+            printf("<VALID>: Met the elf's criteria!\n"); // ! DEBUG
+        } else {
+            printf("<INVALID>: Didn't meet the elf's criteria!\n"); // ! DEBUG
+        }
+        printf("\n");
+        sum += (game_fits_criteria) ? game_id : 0;
     }
-    printf("\n");
-    return is_possible ? game_id : 0;
+    return sum;
 }
 
 int main(int argc, char *argv[])
@@ -140,12 +166,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE + 3;
     }
 
-    int sum = 0;
-    for (int i = 0; i < lines->index; i++) {
-        char *line = lines->buffer[i];
-        sum += game_evaluate(line);
-    }
-    printf("<SUM>: %i\n", sum);
+    printf("<SUM>: %i\n", game_get_sum(lines->buffer, lines->index));
 
     // Not needed for toy programs, but it's good to make it a habit!)
     cri_strvec_delete(lines);

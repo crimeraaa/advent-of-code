@@ -14,10 +14,11 @@
 
 /******************** MEMBER "METHOD" IMPLEMENTATION **************************/
 
-struct StrVector *cri_strvec_new(void)
+StrVector *cri_strvec_new(void)
 {
-    struct StrVector *vec = malloc(sizeof(*vec));
+    StrVector *vec = malloc(sizeof(*vec));
     if (vec == NULL) {
+        eprintf("Failed to allocate memory for string vector handle.");
         return NULL;
     }
     vec->index = 0; 
@@ -25,13 +26,13 @@ struct StrVector *cri_strvec_new(void)
     vec->buffer = malloc(sizeof(*(vec->buffer)) * vec->size);
     if (vec->buffer == NULL) {
         free(vec);
-        eprintf("Failed to allocate memory for vector buffer.");
+        eprintf("Failed to allocate memory for string vector buffer.");
         return NULL;
     }
     return vec;
 }
 
-void cri_strvec_delete(struct StrVector *vec)
+void cri_strvec_delete(StrVector *vec)
 {
     for (int i = 0; i < vec->index; i++) {
         char *str = vec->buffer[i];
@@ -41,7 +42,7 @@ void cri_strvec_delete(struct StrVector *vec)
     free(vec);
 }
 
-bool cri_strvec_push(struct StrVector *vec, char *elem)
+bool cri_strvec_push(StrVector *vec, char *elem)
 {
     // Prepare to resize (size is 1-based, index is 0-based)
     if (vec->index > vec->size - 1) {
@@ -59,21 +60,21 @@ bool cri_strvec_push(struct StrVector *vec, char *elem)
     return true;
 }
 
-bool cri_strbuf_push(struct StrBuffer *str, int c)
+bool cri_strbuf_push(StrBuffer *buf, int c)
 {
     // Prepare to resize. (size is 1-based, index is 0-based)
-    if (str->index > str->size - 1) {
-        str->size += BUFFERSIZE; // grow linearly
+    if (buf->index > buf->size - 1) {
+        buf->size += BUFFERSIZE; // grow linearly
         // Need this cause on realloc failure, original memory not freed
-        char *temp = realloc(str->buffer, str->size);
+        char *temp = realloc(buf->buffer, buf->size);
         if (temp == NULL) {
             return false;
         } 
-        str->buffer = temp;
-    } else if (str->size > MAXALLOCATIONS) {
+        buf->buffer = temp;
+    } else if (buf->size > MAXALLOCATIONS) {
         return false;
     }
-    str->buffer[str->index++] = (char)c;
+    buf->buffer[buf->index++] = (char)c;
     return true;
 }
 
@@ -84,7 +85,7 @@ bool cri_readendl(int c, FILE *stream)
     if (c == '\r' && (c = fgetc(stream)) != EOF) {
         // Char after the CR wasn't LF and for ungetc: EOF == can't pushback 
         if (c != '\n' && (ungetc(c, stream)) == EOF) { 
-            eprintf("Failed to read line-ending with CR ('\\r') .");
+            eprintf("Failed to read line-ending with CR ('\\r').");
             return false;
         }
     }
@@ -94,7 +95,7 @@ bool cri_readendl(int c, FILE *stream)
 char *cri_readline(FILE *stream)
 {
     // Locally scope struct definition: https://stackoverflow.com/a/5590795
-    struct StrBuffer line;
+    StrBuffer line;
     line.index = 0;
     line.size = BUFFERSIZE;
     // Put sizeof as first operand to ensure size_t math.
@@ -134,12 +135,11 @@ char *cri_readline(FILE *stream)
     return copy;
 }
 
-bool cri_readfile(FILE *file, struct StrVector *vec)
+bool cri_readfile(FILE *file, StrVector *vec)
 {
-    long START_POSITION, EOF_POSITION;
-    START_POSITION = ftell(file);
+    long START_POSITION = ftell(file);
     fseek(file, 0, SEEK_END);
-    EOF_POSITION = ftell(file);
+    long EOF_POSITION = ftell(file);
 
     // Reset file pointer so we can read data properly.
     fseek(file, 0, START_POSITION); 

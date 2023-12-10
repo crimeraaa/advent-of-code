@@ -18,17 +18,18 @@
 
 /******************* DATA TYPES/STRUCTURES DEFINITIONS ************************/
 
-struct StrBuffer {
-    char *buffer;
+typedef struct StrBuffer {
+    char *buffer; // 1D dynamic heap-allocated array of `char`.
     int index; // Where the last character was written in the buffer.
     int size; // Total allocated memory, usually more than `index`.
-};
+} StrBuffer;
 
-struct StrVector {
-    char **buffer; // 1D array of `char*`'s (are likely heap-allocated).
+// @note Assumes each string stored in `buffer` is also heap allocated!
+typedef struct StrVector {
+    char **buffer; // 1D dynamic heap-allocated array of `char*`'s.
     int index; // Latest element inserted into `buffer`.
     int size; // Total space allocated for `buffer`, usually more than `index`.
-};
+} StrVector;
 
 /********************** MEMBER "METHOD" PROTOTYPES ****************************/
 
@@ -37,30 +38,31 @@ struct StrVector {
  * @return Handle to your instance, or NULL.
  * @note If any allocation fails, all memory allocated by this is freed.
  */
-struct StrVector *cri_strvec_new(void);
+StrVector *cri_strvec_new(void);
 
 /**
  * Frees all memory associated with your StrVector instance.
  * @note Assumes `vec` itself, `vec->buffer` (and children) are allocated.
  * @warning Has literally 0 error handling. Good luck!
  */
-void cri_strvec_delete(struct StrVector *vec);
+void cri_strvec_delete(StrVector *vec);
 
 /**
- * @param sb Preferably the address.
+ * @param buf Preferably the address.
  * @return false on failure to resize the string's buffer.
  * @note Does not free memory failure.
  */
-bool cri_strbuf_push(struct StrBuffer *sb, int c);
+bool cri_strbuf_push(StrBuffer *buf, int c);
 
 /** 
- * Inserts `elem` to the latest position in `sv`'s buffer. If there isn't enough 
- * space, it then attempts to resize the buffer.
+ * Inserts a string to the latest position in `vec->buffer` .
+ * If ther eisn't enough space, it attempts to resize `vec->buffer`.
  * @param vec Preferably the address.
  * @return false on failure to resize the vector's buffer. 
+ * @note Does not allocate memory for `elem` itself.
  * @note Does not free memory on failure.
  */
-bool cri_strvec_push(struct StrVector *vec, char *elem);
+bool cri_strvec_push(StrVector *vec, char *elem);
 
 /************************** STATIC INLINE FUNCTIONS ***************************/
 // If it's super short that it can be very easily inlined, it goes here.
@@ -68,6 +70,7 @@ bool cri_strvec_push(struct StrVector *vec, char *elem);
 /** 
  * Short for "is end of line character" or "is line ending character". 
  * Simply checks if `c` is either CR or LF.
+ * @note If you got CR, you will want to check for CRLF via `cri_readendl`.
  */
 static inline bool cri_isendl(int c) 
 {
@@ -95,7 +98,7 @@ char *cri_readline(FILE *stream);
  * @return false on failure to resize our vector's buffer.
  * @note Does not free memory on failure.
  */
-bool cri_readfile(FILE *file, struct StrVector *vec);
+bool cri_readfile(FILE *file, StrVector *vec);
 
 /************************ INCLUDE IMPLEMENTATION ******************************/
 
