@@ -1,6 +1,6 @@
 EXE = part1 part2
 # Found in ~/.config/crimeraaa-dotfiles/config.gcc.mk
-CFLAGS += $(C_CXX_DEBUGFLAGS)
+CFLAGS += $(C_CXX_DEBUGFLAGS) -I../..
 
 # Surround in double quotes to allow tabs/whitespaces to reflect in output
 # Use \$$(var) to output the one $ literally and not treat as command

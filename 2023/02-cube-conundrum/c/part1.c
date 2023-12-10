@@ -7,7 +7,7 @@
 
 // Header-only cause I cannot be bothered to deal with translatoin units today
 #define CRI_IO_HELPERS_IMPL 1
-#include "helpers.h"
+#include <helpers.h> // Pass -I../.. or /I"./.. or --include=../.. flag
 
 #define ELF_CRITERIA_RED    12
 #define ELF_CRITERIA_GREEN  13

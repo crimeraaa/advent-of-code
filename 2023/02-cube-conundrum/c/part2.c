@@ -7,7 +7,7 @@
 
 // Header-only cause I cannot be bothered to deal with translatoin units today
 #define CRI_IO_HELPERS_IMPL 1
-#include "helpers.h"
+#include <helpers.h> // Pass -I../.. or /I"./.. or --include=../.. flag
 
 enum CUBE_COLOR_INFO {
     CUBE_COLOR_RED, 
@@ -130,11 +130,11 @@ int game_get_power(const char *sets, const char *endl)
     return total.red.count * total.green.count * total.blue.count;
 }
 
-int game_get_sum(char **buffer, int length)
+int game_get_sum(char **lines, int linecount)
 {
     int sum = 0;
-    for (int i = 0; i < length; i++) {
-        char *line = buffer[i];
+    for (int i = 0; i < linecount; i++) {
+        char *line = lines[i];
         const char *endl = strchr(line, '\0');
         const char *colon = strchr(line, ':');
         const char *sets = strchr(colon, ' ') + 1; // ptr to very first set's char
