@@ -12,9 +12,6 @@
 
 #include "helpers.h"
 
-// Trying to avoid memory allocations in StrBuffer and StrVector constructors.
-#define NO_MALLOC_IN_CONSTRUCTOR 1
-
 /**************** STRING BUFFER "METHOD" IMPLEMENTATIONS **********************/
 
 bool cri_strbuf_init(StrBuffer *buf)
@@ -23,14 +20,8 @@ bool cri_strbuf_init(StrBuffer *buf)
         return false; // Error handling for heap-allocated pointers
     }
     buf->last = 0; 
-#ifdef NO_MALLOC_IN_CONSTRUCTOR
     buf->size = 0;
     buf->buffer = NULL;
-#else
-    vec->size = BUFFERSIZE;
-    vec->buffer = malloc(sizeof(*vec->buffer) * vec->size);
-    return (vec->buffer == NULL);
-#endif
     return true;
 }
 
@@ -64,21 +55,14 @@ bool cri_strvec_init(StrVector *vec)
         return false; // Error handling for heap-allocated pointers
     }
     vec->last = 0; 
-#ifdef NO_MALLOC_IN_CONSTRUCTOR
     vec->size = 0;
     vec->buffer = NULL;
-#else
-    vec->size = BUFFERSIZE;
-    vec->buffer = malloc(sizeof(*vec->buffer) * vec->size);
-    return (vec->buffer == NULL);
-#endif
     return true;
 }
 
 void cri_strvec_delete(StrVector *vec)
 {   
     cri_strvec_clear(vec);
-    free(vec->buffer);
     vec->buffer = NULL; // erase so user can't poke at it later
 }
 
@@ -88,11 +72,8 @@ void cri_strvec_clear(StrVector *vec)
         free(vec->buffer[i]);
     }
     vec->last = 0;
-#ifdef NO_MALLOC_IN_CONSTRUCTOR
     vec->size = 0;
-#else
-    vec->size = BUFFERSIZE;
-#endif
+    free(vec->buffer);
 }
 
 bool cri_strvec_push(StrVector *vec, char *elem)
