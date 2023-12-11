@@ -39,8 +39,9 @@ bool cri_strbuf_push(StrBuffer *buf, int c)
     // Prepare to resize. (size is 1-based, last is 0-based)
     if (buf->last > buf->size - 1) {
         buf->size += BUFFERSIZE; // grow linearly
-        // Need this cause on realloc failure, original memory not freed
-        char *temp = realloc(buf->buffer, buf->size);
+        //? Need in case of realloc failure, as original memory is not freed.
+        //* Note: put sizeof as first operand to ensure `size_t` math.
+        char *temp = realloc(buf->buffer, sizeof(*buf->buffer) * buf->size);
         if (temp == NULL) {
             eprintf("Failed to resize StrBuffer character array.");
             return false;
@@ -101,8 +102,9 @@ bool cri_strvec_push(StrVector *vec, char *elem)
     // when size == 0
     if (vec->last > vec->size - 1) {
         vec->size += BUFFERSIZE; // grow linearly
-        // Need this cause on realloc failure, original memory not freed
-        char **temp = realloc(vec->buffer, vec->size);
+        // ? Need in case of realloc failure, as original memory is not freed.
+        // * Note: put sizeof as first operand to ensure `size_t` math.
+        char **temp = realloc(vec->buffer, sizeof(*vec->buffer) * vec->size);
         if (temp == NULL) {
             eprintf("Could not resize StrVector's pointer array.");
             return false;

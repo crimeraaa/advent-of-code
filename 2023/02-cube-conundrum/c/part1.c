@@ -38,12 +38,7 @@ Cube game_get_cube(const char *elem_start, const char *elem_end)
     const char *color = strchr(elem, ' ') + 1; // 1st non-digit
     ptrdiff_t length = elem_end - color;
 
-    // ! DEBUG
-    // printf("count = %i, color = \"%.*s\"\n", cube.count, (int)length, color);
-
-    // Since color points to the remainder of the original string,
-    // limit the comparison via our substring's determined length.
-    // ? This is ugly, but it's one of the only ways to do this in C.
+    // Limit comparison via substring's determined length.
     if (strncmp("red", color, length) == 0) {
         cube.color = CUBE_COLOR_RED;
     } else if (strncmp("green", color, length) == 0) {
@@ -51,8 +46,7 @@ Cube game_get_cube(const char *elem_start, const char *elem_end)
     } else if (strncmp("blue", color, length) == 0) {
         cube.color = CUBE_COLOR_BLUE;
     }
-    
-    printf("%i %s, ", cube.count, game_get_color(cube.color)); // ! DEBUG
+    printf("%i %s, ", cube.count, game_get_color(cube.color)); //! DEBUG
     return cube;
 }
 
@@ -73,18 +67,14 @@ bool game_get_set(const char *sets, const char *semi)
 {
     const char *comma = NULL;
     while (comma < semi) {
-        comma = strchr(sets, ','); // point to char after comma
-        // `sets` still points most of the original string so clip to `semi`!
-        if (comma == NULL || comma >= semi) {
-            comma = semi;
-        }
-        
+        comma = strchr(sets, ',');
+        // limit comma if out of bounds for this set or is very last set
+        comma = (comma == NULL || comma >= semi) ? semi : comma;
         Cube cube = game_get_cube(sets, comma);
         if (!game_validate_cube(cube)) {
             return false;
         }
-        
-        sets = strchr(comma, ' ') + 1;
+        sets = strchr(comma, ' ') + 1; // try to point to start of next element
     }
     return true;
 }
@@ -94,21 +84,17 @@ bool game_evalute_sets(const char *sets, const char *endl)
     const char *semi = NULL;
     int setno = 1;
     while ((semi < endl) && (sets != NULL)) {
-        printf("set %i: ", setno);
+        printf("set %i: ", setno++);
         semi = strchr(sets, ';'); // points to exact position in string
-        if (semi == NULL) {
-            semi = endl; // Must be the very last set
-        }
-        // ptrdiff_t setlen = semi - set; // Substr. length w/o semi
-
+        semi = (semi == NULL) ? endl : semi; // account for very last set
         bool set_fits_criteria = game_get_set(sets, semi);
-        printf("\n"); // ! DEBUG: slightly prettier debug printout
+        printf("\n"); // Slightly prettier printout between sets
         if (!set_fits_criteria) {
             return false;
         }
         // Find whitespace after semi and point to char past that
-        sets = strchr(semi + 1, ' ') + 1; // point to start of next element
-        setno++;
+        // @note Ternary is to avoid reading unknown memory.
+        sets = (semi < endl) ? strchr(semi + 1, ' ') + 1 : sets;
     }
     return true;
 }
@@ -130,9 +116,9 @@ int game_get_sum(char **lines, int linecount)
         printf("<GAME> %d: %s\n", game_id, sets);
         bool game_fits_criteria = game_evalute_sets(sets, endl);
         if (game_fits_criteria) {
-            printf("<VALID>: Met the elf's criteria!\n"); // ! DEBUG
+            printf("<VALID>: Met the elf's criteria!\n"); //! DEBUG
         } else {
-            printf("<INVALID>: Didn't meet the elf's criteria!\n"); // ! DEBUG
+            printf("<INVALID>: Didn't meet the elf's criteria!\n"); //! DEBUG
         }
         printf("\n");
         sum += (game_fits_criteria) ? game_id : 0;
@@ -147,13 +133,12 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    const char *filename = (argc == 2) ? argv[1] : FALLBACK_DIRECTORY "input.txt";
+    const char *filename = (argc == 2) ? argv[1] : FALLBACK_DIRECTORY "sample.txt";
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
         eprintf("Failed to open input file.");
         return 2;
     }
-
     StrVector lines = cri_readfile(file);
     if (lines.buffer == NULL) {
         fclose(file);

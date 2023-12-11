@@ -29,7 +29,7 @@ typedef struct Cube {
 } Cube;
 
 typedef struct Set {
-    struct Cube red, green, blue;
+    int red, green, blue; // cube counts for each color
 } Set;
 
 #endif // AOC_2023_CUBE_CONUNDRUM_H

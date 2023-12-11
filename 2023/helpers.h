@@ -123,6 +123,7 @@ char *cri_readline(FILE *stream);
  * @warning For error handling, please check if `vec.buffer` is `NULL`!
  * @note On allocation failure, `vec.buffer` and children, 
  * @note `vec.buffer` itself is set to `NULL` on allocation failure as well.
+ * @warning You are responsible for closing the file handle yourself!
  */
 StrVector cri_readfile(FILE *file);
 
