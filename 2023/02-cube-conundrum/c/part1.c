@@ -14,7 +14,7 @@
  * Determine output string to use.
  * @param color_id Preferably pass in `(Cube) cube.color`
 */
-const char *game_get_color(CUBE_COLOR_INFO color_id)
+const char *game_get_color(CubeColor color_id)
 {
     switch (color_id)
     {
@@ -147,29 +147,20 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    const char *filename = (argc == 2) ? argv[1] : FALLBACK_DIRECTORY "sample.txt";
+    const char *filename = (argc == 2) ? argv[1] : FALLBACK_DIRECTORY "input.txt";
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
         eprintf("Failed to open input file.");
-        return EXIT_FAILURE + 1;
+        return 2;
     }
 
-    struct StrVector *lines = cri_strvec_new();
-    if (lines == NULL) {
+    StrVector lines = cri_readfile(file);
+    if (lines.buffer == NULL) {
         fclose(file);
-        return EXIT_FAILURE + 2;
+        return 3;
     }
-
-    if (!cri_readfile(file, lines)) {
-        cri_strvec_delete(lines);
-        fclose(file);
-        return EXIT_FAILURE + 3;
-    }
-
-    printf("<SUM>: %i\n", game_get_sum(lines->buffer, lines->index));
-
-    // Not needed for toy programs, but it's good to make it a habit!)
-    cri_strvec_delete(lines);
-    fclose(file);
+    printf("<SUM>: %i\n", game_get_sum(lines.buffer, lines.last));
+    cri_strvec_delete(&lines); // Not 100% needed for toy programs
+    fclose(file); // but these are good habits to develop anyways
     return EXIT_SUCCESS;
 }

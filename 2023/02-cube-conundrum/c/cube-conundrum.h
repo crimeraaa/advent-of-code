@@ -15,17 +15,17 @@
 "/home/crimeraaa/repos/advent-of-code/2023/02-cube-conundrum/"
 #endif
 
-typedef enum CUBE_COLOR_INFO {
+typedef enum CubeColor {
     CUBE_COLOR_RED, 
     CUBE_COLOR_GREEN, 
     CUBE_COLOR_BLUE, 
     // CUBE_COLOR_COUNT,
     // CUBE_COLOR_INVALID
-} CUBE_COLOR_INFO;
+} CubeColor;
 
 typedef struct Cube {
     int count;
-    CUBE_COLOR_INFO color;
+    CubeColor color;
 } Cube;
 
 typedef struct Set {

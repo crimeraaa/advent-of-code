@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE + 1;
     }
 
-    StrVector *lines = cri_strvec_new();
+    StrVector *lines = cri_strvec_init();
     if (lines == NULL) {
         exitcode = EXIT_FAILURE + 2;
         goto FILE_CLEANUP;
@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
         goto VECTOR_CLEANUP;
     }
 
-    printf("<SUM>: %i\n", game_get_sum(lines->buffer, lines->index));
+    printf("<SUM>: %i\n", game_get_sum(lines->buffer, lines->last));
 
     // Not needed for toy programs, but it's good to make it a habit!)
     VECTOR_CLEANUP:
