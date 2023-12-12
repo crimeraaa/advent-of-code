@@ -2,14 +2,18 @@
 ---@field dst str destination category's name.
 ---@field src str source category's name.
 
----@class MapData 
+---@class MapRange 
 ---@field dst int destination category's starting number.
 ---@field src int source category's starting number.
 ---@field range int range of numbers for this specific map.
 
 ---@class Map
 ---@field label MapLabels Of format: `"{src}-to-{dst} map:"`
----@field data MapData[] Of format: `"{int} {int} {int}"`
+---@field data MapRange[] Of format: `"{int} {int} {int}"`
+
+---@class LookupTable
+---@field label MapLabels Use the category names to traverse the table.
+---@field data MapRange[] Maps `src` values to `dst`.
 
 -- Fully qualified path of caller's current working director, not the script's.
 -- Ugly but works: https://stackoverflow.com/a/6036884
@@ -56,21 +60,41 @@ local function make_padded_formatstring(fmtspec, pad, reps)
     return string.format(escaped, pad):rep(reps) .. "|\n"
 end
 
----@param labels MapLabels
----@param data MapData
-function print_mappings(labels, data)
+---@param label MapLabels
+---@param data MapRange
+function print_mapdata(label, data)
     -- This is ugly but it works
     local col1_format = "range {size}"
-    local col2_format = "src {".. labels.src .."}"
-    local col3_format = "dst {".. labels.dst .."}"
+    local col2_format = "src {".. label.src .."}"
+    local col3_format = "dst {".. label.dst .."}"
 
     local padding = math.max(#col1_format, #col2_format, #col3_format)
     local label_format = make_padded_formatstring("s", padding, 3)
-    local items_format  = make_padded_formatstring("i", padding, 3)
+    local items_format = make_padded_formatstring("i", padding, 3)
 
     printf(label_format, col1_format, col2_format, col3_format);
     for i = 0, data.range - 1 do
         printf(items_format, i + 1, i + data.src, i + data.dst)
+    end
+end
+
+---@param label MapLabels
+---@param mapped int[]
+---@param count int
+function print_mapped(label, mapped, count)
+    local col1_format = "src {".. label.src .."}"
+    local col2_format = "dst {".. label.dst .."}"
+
+    local padding = math.max(#col1_format, #col2_format)
+    local label_format = make_padded_formatstring("s", padding, 2)
+    local items_format = make_padded_formatstring("i", padding, 2)
+
+    printf("%s-to-%s map: (%i elements)\n", label.src, label.dst, count)
+    printf(label_format, col1_format, col2_format);
+
+    -- Lua numeric `for` loops are inclusive of condition, so need subtract 1
+    for i = 0, count - 1 do
+        printf(items_format, i, mapped[i])
     end
 end
 
@@ -83,79 +107,66 @@ function isarray(tbl)
     return (arraysize == actualsize)
 end
 
----@param tbl tbl
----@param name str
----@param tabs? int
----@param pairs_fn function
----@param keyname_fn fun(key:str|int):str
-local function print_table_generic(tbl, name, tabs, pairs_fn, keyname_fn)
-    tabs = tabs or 0
-    local indent = string.rep("\t", tabs)
-    printf("%s%s = {\n", indent, name)
-    for k, v in pairs_fn(tbl) do
-        local item = keyname_fn(k)
-        if type(v) == "table" then
-            -- kinda like ternary operator in C
-            local iterator_fn = (isarray(v) and ipairs) or pairs
-            print_table_generic(tbl, item, tabs + 1, iterator_fn, keyname_fn)
-        else
-            -- Surround strings with quotes for differentiation
-            v = (type(v) == "string" and '"'..v..'"') or tostring(v)
-            -- Indent one more to show this element as being part of the table
-            printf("\t%s%s=%s,\n", indent, k, v)
-        end
+-- Lookup table to determine how to convert table keys to strings for output.
+-- I still find it funny that non-string and non-integer keys are valid
+---@type table<function, fun(key:str|int):str>
+local key_fns = {
+    [ipairs] = function(key)
+        return string.format("[%i]", key)
+    end,
+    [pairs] = function(key)
+        return tostring(key)
     end
-    printf("%s},", indent)
+}
+
+---@param item_isarray bool
+local function determine_fns(item_isarray)
+    local pairs_fn = (item_isarray and ipairs) or pairs
+    local key_fn = (item_isarray and key_fns[ipairs]) or key_fns[pairs_fn]
+    return pairs_fn, key_fn
 end
 
 -- Print a generic key-value pair table. Can recursively print subtables!
 ---@param tbl tbl
 ---@param name str
----@param tabs? int
-function print_table(tbl, name, tabs)
+---@param tabs? int Default to 0.
+---@param pairs_fn? function Default to `pairs`.
+---@param key_fn? fun(key:str|int):str Default to fn returning `tostring(key)`.
+function print_table(tbl, name, tabs, pairs_fn, key_fn)
     tabs = tabs or 0
+    pairs_fn = pairs_fn or pairs
+    key_fn = key_fn or key_fns[pairs_fn]
+
     local indent = string.rep("\t", tabs)
     printf("%s%s = {\n", indent, name)
-    for k, v in pairs(tbl) do
-        if type(v) == "table" then
-            if isarray(v) then
-                print_array(v, k, tabs + 1)
-            else
-                print_table(v, k, tabs + 1) -- Try to cram into a single line
-            end
+
+    -- Dump information of 0-based tables, Lua iterators don't catch these
+    if tbl[0] then
+        printf("\t%s%s=%s,\n", indent, key_fn(0), tbl[0])
+    end
+
+    for key, item in pairs_fn(tbl) do
+        local itemname = key_fn(key)
+        if type(item) == "table" then
+            -- Don't overwrite caller's functions, you may screw something up!
+            local _pairs_fn, _key_fn = determine_fns(isarray(item))
+            -- lol recursion
+            print_table(item, itemname, tabs + 1, _pairs_fn, _key_fn)
         else
-            k = tostring(k)
-            -- kinda like ternary operator in C.
-            v = (type(v) == "string" and '"'..v..'"') or tostring(v)
-            -- Indent one more to show this element as being part of the table
-            printf("\t%s%s=%s,\n", indent, k, v)
+            -- Surround strings with quotes for differentiation
+            item = (type(item) == "string" and '"'..item..'"') or tostring(item)
+            -- Indent one more to show this element as under scope of table
+            printf("\t%s%s=%s,\n", indent, itemname, item)
         end
     end
     printf("%s},\n", indent)
 end
 
 -- Print an ordered table which is effectively an array.
+-- If index 0 exists, there is a special case to print it as well.
 ---@param array any[]
 ---@param name str
 ---@param tabs? int
 function print_array(array, name, tabs)
-    tabs = tabs or 0
-    local indent = string.rep("\t", tabs)
-    printf("%s%s = {\n", indent, name)
-    for i, v in ipairs(array) do
-        local item = string.format("[%i]", i)
-        -- Subtable names will be indented properly by `print_table`
-        if type(v) == "table" then
-            if isarray(v) then
-                printf("\n") -- only move arrays away from caller's `{`
-                print_array(v, item, tabs + 1)
-            else
-                print_table(v, item, tabs + 1)
-            end
-        else
-            -- Indent one more to show this element as being part of the table
-            printf("\t%s%s = %s\n", indent, item, tostring(v))
-        end
-    end
-    printf("%s},\n", indent)
+    print_table(array, name, tabs or 0, ipairs)
 end
