@@ -1,0 +1,4 @@
+# These are all system-specific, e.g. WSL and Win10
+# will have incompatible configurations in `c_cpp_properties.json`
+# The advent-of-code.code-workspace however is OK.
+.vscode/*.json
