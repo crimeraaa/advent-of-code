@@ -1,3 +1,7 @@
+--------------------------------------------------------------------------------
+----------------------------- STRUCT "DEFINITIONS" -----------------------------
+--------------------------------------------------------------------------------
+
 ---@class MapLabels
 ---@field dst str destination category's name.
 ---@field src str source category's name.
@@ -10,6 +14,10 @@
 ---@class Map
 ---@field label MapLabels Of format: `"{src}-to-{dst} map:"`
 ---@field data MapRange[] Of format: `"{int} {int} {int}"`
+
+--------------------------------------------------------------------------------
+-------------------------------- IO FUNCTIONS ----------------------------------
+--------------------------------------------------------------------------------
 
 -- Fully qualified path of caller's current working director, not the script's.
 -- Ugly but works: https://stackoverflow.com/a/6036884
@@ -44,6 +52,10 @@ function readfile(filename)
     file:close()
     return lines
 end
+
+--------------------------------------------------------------------------------
+------------------------- VARIOUS PRINT DATA FUNCTIONS -------------------------
+--------------------------------------------------------------------------------
 
 -- Creates format string with padding cuz Lua doesn't support `"%.*{spec}"`.
 ---@param fmtspec str
@@ -94,6 +106,28 @@ function print_mapped(label, mapped, count)
     end
 end
 
+-- Print out the current map's src and dst value ranges.
+---@param label MapLabels
+---@param data MapRange
+---@param limit tbl
+function print_mapping_ranges(label, data, limit)
+    printf("\t{%s} (%.0f...%.0f) => {%s} (%.0f...%.0f)\n", 
+            label.src, data.src, limit.src,
+            label.dst, data.dst, limit.dst)
+end
+
+---@param label MapLabels
+---@param source int
+---@param mapped int
+function print_final_mapping(label, source, mapped)
+    printf("\t<MAPPED> %s %s => %s: %.0f\n", 
+            label.src, source, label.dst, mapped)
+end
+
+--------------------------------------------------------------------------------
+-------------------------- PRINT TABLEDATA FUNCTIONS ---------------------------
+--------------------------------------------------------------------------------
+
 function isarray(tbl)
     local arraysize = #tbl -- `#` operator only considers numeric keys
     local actualsize = 0 -- non-numeric keys are counted in `arraysize`
@@ -127,7 +161,7 @@ end
 ---@param name str
 ---@param tabs? int Default to 0.
 ---@param pairs_fn? function Default to `pairs`.
----@param key_fn? fun(key:str|int):str Default to fn returning `tostring(key)`.
+---@param key_fn? fun(key:str|int):str Default to no fn, uses `tostring(key)`.
 function print_table(tbl, name, tabs, pairs_fn, key_fn)
     tabs = tabs or 0
     pairs_fn = pairs_fn or pairs

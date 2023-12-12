@@ -119,4 +119,4 @@
 	humidity (93...96) => location (56...59)
 	<MAPPED> humidity 35 => location: 35
 
-<LOWEST>: 35
+<LOWEST LOCATION>: 35
