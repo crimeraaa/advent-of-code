@@ -11,10 +11,6 @@
 ---@field label MapLabels Of format: `"{src}-to-{dst} map:"`
 ---@field data MapRange[] Of format: `"{int} {int} {int}"`
 
----@class LookupTable
----@field label MapLabels Use the category names to traverse the table.
----@field data MapRange[] Maps `src` values to `dst`.
-
 -- Fully qualified path of caller's current working director, not the script's.
 -- Ugly but works: https://stackoverflow.com/a/6036884
 -- CWD = os.getenv("PWD") or io.popen("cd", "r"):read("*l")

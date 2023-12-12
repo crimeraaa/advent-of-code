@@ -28,33 +28,16 @@ local function make_lookup_table(maps)
     local findmap = {} 
     -- local ii, jj = 0, 0
     loop_maps(maps, function(map)
-        local finalmap = {
-            label = {src = map.label.src, dst = map.label.dst},
-            data = {}
-        }
-        printf("%s-to-%s map:\n", map.label.src, map.label.dst)
-        for _, data in ipairs(map.data) do
-            -- Numbers are way too big to fit in %i
-            printf("dst=%.0f, src=%.0f, range=%.0f\n", 
-                    data.dst, 
-                    data.src, 
-                    data.range)
-            -- print_mapdata(map.label, data)
-            -- local range = data.src + data.range
-            --! This is the bottleneck!
-            --! Rather than create tables, determine lookup mathematically?
-            -- Lua numeric `for` loops are inclusive of the condition
-            -- for i = 0, data.range - 1 do
-            --     -- Will not necessarily fill up index 0, 1, 10, etc. though!
-            --     finalmap.data[data.src + i] = data.dst + i
-            -- end
-        end
-        printf("\n")
-
-        findmap[map.label.src] = finalmap
-        -- print_mapped(map.label, mapped, count)
-        -- ii = ii + 1
-        -- print_array(mapped, "mapped[".. ii .."]")
+        -- printf("%s-to-%s map:\n", map.label.src, map.label.dst)
+        -- for _, data in ipairs(map.data) do
+        --     -- Numbers are way too big to fit in %i
+        --     printf("dst=%.0f, src=%.0f, range=%.0f\n", 
+        --             data.dst, 
+        --             data.src, 
+        --             data.range)
+        -- end
+        -- printf("\n")
+        findmap[map.label.src] = map
     end)
     return findmap
 end
@@ -105,16 +88,8 @@ end
 ---@param argc int
 ---@param argv str[]
 local function main(argc, argv)
-    local lines = readfile((argc == 1 and argv[1]) or "../input.txt")
+    local lines = readfile((argc == 1 and argv[1]) or "../sample.txt")
     local input = make_seedmap_table(lines)
-    -- if input then
-    --     print_array(input.seeds, "input.seeds")
-    --     -- print_table(input.maps, "input.maps")
-    --     for i, v in ipairs(input.maps) do
-    --         print_table(v, "input.maps[".. i .."]")
-    --     end
-    --     return 0
-    -- end
 
     -- Map source name strings to lookup tables.
     local findmap = make_lookup_table(input.maps)
@@ -123,20 +98,43 @@ local function main(argc, argv)
         local source = seed
         local mapped = 0 -- need outside of loop so can poke at afterwards
         local category = "seed"
-        local map = findmap[category] ---@type LookupTable
-        -- printf("<SEED> %i:\n", seed)
+        local map = findmap[category] ---@type Map
+        printf("<SEED> %.0f:\n", seed)
         while map do
-            local _src, _dst = map.label.src, map.label.dst
+            local label_src, label_dst = map.label.src, map.label.dst
             -- If doesn't exist just use source value as the mapping
-            mapped = map.data[source] or source
-            -- printf("\t%s %s => %s:  %i\n", _src, source, _dst, mapped)
+            -- TODO: Determine mapping mathematically
+            for _, data in pairs(map.data) do
+                local limit_src = data.src + data.range - 1
+                local limit_dst = data.dst + data.range - 1
+                printf(
+                    "\t%s (%.0f...%.0f) => %s (%.0f...%.0f)\n", 
+                    label_src, data.src, limit_src,
+                    label_dst, data.dst, limit_dst
+                )
+                -- Determine if current value is in range
+                if (source >= data.src) and (source <= limit_src) then
+                    mapped = source + (data.dst - data.src)
+                    break -- No need to match anymore so get outta here!
+                else
+                    mapped = source
+                end
+            end
+            printf(
+                "\t<MAPPED> %s %s => %s: %.0f\n", 
+                label_src, 
+                source, 
+                label_dst, 
+                mapped
+            )
+            printf("\n")
             source = mapped -- need for the next comparison
-            category = _dst
+            category = label_dst
             map = findmap[category]
         end
         lowest = (not lowest or mapped < lowest) and mapped or lowest
     end
-    printf("<LOWEST>: %i\n", lowest)
+    printf("<LOWEST>: %.0f\n", lowest)
     return 0
 end
 
