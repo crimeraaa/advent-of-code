@@ -1,0 +1,4 @@
+# clangd project-specific configuration file.
+CompileFlags:
+  Add:
+    "-I../../" # Need so {number}-{name}/c/part1.c and friends can see advent-of-code/2023/helpers.h and friends

@@ -78,6 +78,6 @@
         "trailing-space",
         "need-check-nil",
         "trailing-space",
-        // "duplicate-set-field"
+        // "duplicate-set-field" // omg shut up
     ]
 }
