@@ -1,3 +1,4 @@
+require("util/stdio")
 require("helpers")
 
 ---@param line str
@@ -18,23 +19,6 @@ local function make_mapcategory(matched_src, matched_dst)
         label = {src = matched_src, dst = matched_dst}, 
         data = {}
     }
-end
-
--- Creates a copy of table `data` where all values are converted to numbers.
----@param source tbl
----@param copy_fn? fun(v: any):any Custom function to convert values if needed.
-local function copy_table(source, copy_fn)
-    local target = {}
-    for k, v in pairs(source) do
-        -- Invoke `copy_fn` only if exists
-        target[k] = (copy_fn and copy_fn(v)) or v
-    end
-    return target
-end
-
--- Define here so function not created everytime it's needed in the loop.
-local function copy_tonumber(val)
-    return tonumber(val)
 end
 
 -- Parse our file's stored lines and divide them into our seeds and map tables.
@@ -71,7 +55,7 @@ local function make_seedmap_table(lines)
         elseif values.dst and values.src and values.range then 
             -- found new data line for the current map
             index = index + 1 
-            maps[category].data[index] = copy_table(values, copy_tonumber)
+            maps[category].data[index] = copy_table(values, tonumber)
         end
     end
     return seeds, maps

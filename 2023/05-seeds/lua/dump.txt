@@ -1,0 +1,108 @@
+Seeds: [79...92]
+	mapped[1][1]: [79...92] (14 elements)
+	seed-to-soil map:
+		[98...99] => [50...51]	offset: -48
+		[50...97] => [52...99]	offset: 2
+		Remap handle.start: 79=>81
+		No need remap handle.range: 14
+
+	mapped[2][1]: [81...94] (14 elements)
+	soil-to-fertilizer map:
+		[15...51] => [0...36]	offset: -15
+		[52...53] => [37...38]	offset: -15
+		[0...14] => [39...53]	offset: 39
+
+	mapped[3][1]: [81...94] (14 elements)
+	fertilizer-to-water map:
+		[53...60] => [49...56]	offset: -4
+		[11...52] => [0...41]	offset: -11
+		[0...6] => [42...48]	offset: 42
+		[7...10] => [57...60]	offset: 50
+
+	mapped[4][1]: [81...94] (14 elements)
+	water-to-light map:
+		[18...24] => [88...94]	offset: 70
+		[25...94] => [18...87]	offset: -7
+		Remap handle.start: 81=>74
+		No need remap handle.range: 14
+
+	mapped[5][1]: [74...87] (14 elements)
+	light-to-temperature map:
+		[77...99] => [45...67]	offset: -32
+		[45...63] => [81...99]	offset: 36
+		[64...76] => [68...80]	offset: 4
+		Remap handle.start: 74=>78
+		TODO: Remap handle.range: 14 values
+			Need submap for src[74...76].
+			Need submap for src[77...88].
+
+	mapped[6][1]: [78...91] (14 elements)
+	temperature-to-humidity map:
+		[69...69] => [0...0]	offset: -69
+		[0...68] => [1...69]	offset: 1
+
+	mapped[7][1]: [78...91] (14 elements)
+	humidity-to-location map:
+		[56...92] => [60...96]	offset: 4
+		Remap handle.start: 78=>82
+		TODO: Remap handle.range: 14 values
+			Need submap for src[78...92].
+			Need submap for src[93...92].
+		[93...96] => [56...59]	offset: -37
+
+Seeds: [55...67]
+	mapped[1][1]: [55...67] (13 elements)
+	seed-to-soil map:
+		[98...99] => [50...51]	offset: -48
+		[50...97] => [52...99]	offset: 2
+		Remap handle.start: 55=>57
+		No need remap handle.range: 13
+
+	mapped[2][1]: [57...69] (13 elements)
+	soil-to-fertilizer map:
+		[15...51] => [0...36]	offset: -15
+		[52...53] => [37...38]	offset: -15
+		[0...14] => [39...53]	offset: 39
+
+	mapped[3][1]: [57...69] (13 elements)
+	fertilizer-to-water map:
+		[53...60] => [49...56]	offset: -4
+		Remap handle.start: 57=>53
+		TODO: Remap handle.range: 13 values
+			Need submap for src[57...60].
+			Need submap for src[61...70].
+		[11...52] => [0...41]	offset: -11
+		[0...6] => [42...48]	offset: 42
+		[7...10] => [57...60]	offset: 50
+
+	mapped[4][1]: [53...65] (13 elements)
+	water-to-light map:
+		[18...24] => [88...94]	offset: 70
+		[25...94] => [18...87]	offset: -7
+		Remap handle.start: 53=>46
+		No need remap handle.range: 13
+
+	mapped[5][1]: [46...58] (13 elements)
+	light-to-temperature map:
+		[77...99] => [45...67]	offset: -32
+		[45...63] => [81...99]	offset: 36
+		Remap handle.start: 46=>82
+		TODO: Remap handle.range: 13 values
+			Need submap for src[46...63].
+			Need submap for src[64...59].
+		[64...76] => [68...80]	offset: 4
+
+	mapped[6][1]: [82...94] (13 elements)
+	temperature-to-humidity map:
+		[69...69] => [0...0]	offset: -69
+		[0...68] => [1...69]	offset: 1
+
+	mapped[7][1]: [82...94] (13 elements)
+	humidity-to-location map:
+		[56...92] => [60...96]	offset: 4
+		Remap handle.start: 82=>86
+		TODO: Remap handle.range: 13 values
+			Need submap for src[82...92].
+			Need submap for src[93...95].
+		[93...96] => [56...59]	offset: -37
+
