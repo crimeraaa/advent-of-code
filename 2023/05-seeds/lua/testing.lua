@@ -46,17 +46,11 @@ local function parse_lines(lines)
     return seeds, database
 end
 
----@param value num
----@param range_start num
----@param range_stop num
-local function is_in_range(value, range_start, range_stop)
-    return (value >= range_start) and (value <= range_stop)
-end
-
----@param indent str[]
 ---@param handle SeedPair
 ---@param data MapRange
-local function update_thismap(indent, handle, data)
+---@param indent str[]
+---@param tab int
+local function loop_submaps(handle, data, indent, tab)
     -- Given `{dst=50,src=98,range=2}` so offset = `dst-src`.
     -- 
     -- We then get `50 - 98 = -48` as our value to map by.
@@ -66,25 +60,47 @@ local function update_thismap(indent, handle, data)
     local limit_src, limit_dst = get_maprange_limits(data)
     local range_src, range_dst = make_map_rangestrs(data)
 
-    printf("%s%s => %s", indent[2], range_src, range_dst)
-    printf("%soffset: %.0f\n", indent[1], offset, limit_src, limit_dst)
+    printf("%s%s => %s", indent[tab], range_src, range_dst)
+    printf("%soffset: %.0f\n", indent[tab], offset, limit_src, limit_dst)
 
     if is_in_range(handle.start, data.src, limit_src) then
-        local old = handle.start -- keep around, need it quite a bit
-        handle.start = old + offset
-        printf("%sRemap handle.start: %.0f=>%.0f\n", indent[2], old, handle.start)
-        if not is_in_range(handle.start + handle.range, data.src, limit_src) then
-            printf("%sTODO: Remap handle.range: %.0f values\n", indent[2], handle.range)
-            local lclip_src = make_rangestr(old, limit_src, true)
-            local rclip_src = make_rangestr(limit_src + 1, old + handle.range, true)
-            printf("%sNeed submap for src%s.\n", indent[3], lclip_src)
-            printf("%sNeed submap for src%s.\n", indent[3], rclip_src)
+        local old = handle.start -- keep around, need it quite a bit.
+        local new = old + offset
+
+        printf("%sRemap handle.start: %.0f=>%.0f\n", indent[tab], old, new)
+        if not is_in_range(new + handle.range, data.src, limit_src) then
+            printf("%sRemap handle.range: %.0f\n", indent[tab], handle.range)
+            ---@type SeedPair
+            local left_src = {
+                start = old, 
+                range = limit_src - old + 1 -- range is exclusive so add 1 to offset
+            }
+            local left_dst = {
+                start = new,
+                range = left_src.range
+            }
+            printf(
+                "%ssubmap: src%s=>dst%s\n", 
+                indent[tab+1], 
+                make_rangestr(left_src.start, left_src.range),
+                make_rangestr(left_dst.start, left_dst.range)
+            )
+
+            ---@type SeedPair
+            local right_src = {
+                start = limit_src + 1, -- add 1 for next element, 
+                range = (old + handle.range - 1) - limit_src -- sub 1 for endpoint.
+            }
+            printf(
+                "%ssubmap: src%s=>TODO: get outside mapping\n", 
+                indent[tab+1], 
+                make_rangestr(right_src.start, right_src.range)
+            )
         else
-            printf("%sNo need remap handle.range: %.0f\n", indent[2], handle.range)
+            printf("%sNo need remap handle.range: %.0f\n", indent[tab], handle.range)
         end
-        -- Implied else, no need to change handle.range!
-    end
-    -- Implied else is we keep the previous mappings.
+        handle.start = new
+    end 
 end
 
 ---@param seeds SeedPair
@@ -94,34 +110,45 @@ local function find_location(seeds, database)
     local map = database["seed"] ---@type Map we start by querying key "seed".
 
     -- We will definitely have multiple mappings that are not contiguous.
-    local mapped = {} ---@type SeedPair[][] is 2D so we can have multimaps.
-    local ii, jj = 1, 1 -- jj is the index of which multimap we're poking at
-    mapped[ii] = {
+    -- It's 2D so we can have multimaps.
+    ---@type SeedPair[][] 
+    local mapped = {} 
+
+    -- sub_i is the index of which multimap we're poking at
+    local main_i, sub_i = 1, 1 
+
+    mapped[main_i] = {
         {start = seeds.start, range = seeds.range}
     }
-    local handle = mapped[ii][jj]
     printf("Seeds: %s\n", seedrange)
 
+    local tab = 1
     -- Indent levels so we don't construct the strings over and over.
     local indent = {
-        make_indent(1),
-        make_indent(2),
-        make_indent(3),
-        make_indent(4)
+        make_indent(tab+0),
+        make_indent(tab+1),
+        make_indent(tab+2),
+        make_indent(tab+3)
     }
     
     while map do
-        local rangestr = make_rangestr(handle.start, handle.range)
-        printf("%smapped[%i][%i]: %s (%i elements)\n", indent[1], ii, jj, rangestr, handle.range)
-        printf("%s%s-to-%s map:\n", indent[1], map.label.src, map.label.dst)
-        ii = ii + 1
-        mapped[ii] = {}
-        mapped[ii][jj] = copy_table(handle) -- start of with previous values
-        handle = mapped[ii][jj]
-        for _, data in ipairs(map.data) do
-            update_thismap(indent, handle, data) 
+        print_handles(mapped, main_i, sub_i, indent, tab)
+        printf("%s%s-to-%s map:\n", indent[tab], map.label.src, map.label.dst)
+        main_i = main_i + 1
+        mapped[main_i] = make_handle_array(mapped, main_i - 1, sub_i)
+        for loop_i = 1, sub_i do
+            local handle = mapped[main_i][loop_i]
+            for _, data in pairs(map.data) do
+                loop_submaps(handle, data, indent, tab + 1)
+                -- local left, right = loop_submaps(handle, data, indent, tab + 1)
+                -- if left and right then
+                --     mapped[main_i][sub_i] = left -- Replace the original map
+                --     mapped[main_i][sub_i + 1] = right -- Newly split map!
+                --     sub_i = sub_i + 1
+                -- end
+            end
+            printf("\n")
         end
-        printf("\n")
         map = database[map.label.dst]
     end
 end

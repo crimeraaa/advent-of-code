@@ -136,3 +136,40 @@ function print_final_mapping(label, source, mapped, tab)
 end
 
 
+---@param value num
+---@param range_start num
+---@param range_stop num
+function is_in_range(value, range_start, range_stop)
+    return (value >= range_start) and (value <= range_stop)
+end
+
+---@param mapped SeedPair[][]
+---@param main_i int
+---@param sub_i int
+---@param indent str[]
+---@param tab int
+function print_handles(mapped, main_i, sub_i, indent, tab)
+    -- Lua numeric for loops are inclusive of the condition.
+    for loop_i = 1, sub_i do
+        local handle = mapped[main_i][loop_i]
+        local rangestr = make_rangestr(handle.start, handle.range)
+        printf(
+            "%smapped[%i][%i]: %s (%i elements)\n", 
+            indent[tab], main_i, loop_i, rangestr, handle.range
+        )
+    end
+end
+
+-- Create a new array of at least `sub_i` amount of SeedPair handles.
+-- They take on the values of the previous ones.
+---@param mapped SeedPair[][]
+---@param main_i int
+---@param sub_i int
+function make_handle_array(mapped, main_i, sub_i)
+    local copy = {} ---@type SeedPair[]
+    for loop_i = 1, sub_i do
+        -- start of with previous values
+        copy[loop_i] = copy_table(mapped[main_i][loop_i])
+    end
+    return copy
+end
