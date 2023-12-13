@@ -89,6 +89,7 @@ local function map_source(map, source)
     for _, data in pairs(map.data) do
         limit.src = data.src + data.range - 1 -- -1 excludes {src+range} itself
         limit.dst = data.dst + data.range - 1 -- src=97,range=2: 97...98, not 99
+        print_mapdata(map.label, data, 1)
         -- print_mapping_ranges(label, data, limit)
         -- Determine if current value is in range
         if (source >= data.src) and (source <= limit.src) then

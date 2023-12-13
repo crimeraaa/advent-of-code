@@ -7,13 +7,17 @@
 ---@field src str source category's name.
 
 ---@class MapRange 
----@field dst int destination category's starting number.
----@field src int source category's starting number.
----@field range int range of numbers for this specific map.
+---@field dst num destination category's starting number.
+---@field src num source category's starting number.
+---@field range num range of numbers for this specific map.
 
 ---@class Map
 ---@field label MapLabels Of format: `"{src}-to-{dst} map:"`
 ---@field data MapRange[] Of format: `"{int} {int} {int}"`
+
+---@class SeedPair
+---@field start num Number with which to start `range` by.
+---@field range num Up to how many seeds, offset from `start`, to check against.
 
 --------------------------------------------------------------------------------
 -------------------------------- IO FUNCTIONS ----------------------------------
@@ -57,28 +61,36 @@ end
 ------------------------- VARIOUS PRINT DATA FUNCTIONS -------------------------
 --------------------------------------------------------------------------------
 
+---@param tabs? int If not specified, returns an empty string.
+function make_indent(tabs)
+    return (tabs and string.rep("\t", tabs)) or ""
+end
+
 -- Creates format string with padding cuz Lua doesn't support `"%.*{spec}"`.
 ---@param fmtspec str
 ---@param pad int
+---@param indent str
 ---@param reps? int
-local function make_padded_formatstring(fmtspec, pad, reps)
+local function make_padded_formatstring(fmtspec, pad, indent, reps)
     reps = reps or 1
-    local escaped = "| %%-%i" .. fmtspec .. " "
+    local escaped = indent .. "| %%-%i" .. fmtspec .. " "
     -- double % (the %%- fmtspec) is an escape, to be formatted by the caller
     return string.format(escaped, pad):rep(reps) .. "|\n"
 end
 
 ---@param label MapLabels
 ---@param data MapRange
-function print_mapdata(label, data)
+---@param tab? int
+function print_mapdata(label, data, tab)
+    local indent = make_indent(tab)
     -- This is ugly but it works
     local col1_format = "range {size}"
     local col2_format = "src {".. label.src .."}"
     local col3_format = "dst {".. label.dst .."}"
 
     local padding = math.max(#col1_format, #col2_format, #col3_format)
-    local label_format = make_padded_formatstring("s", padding, 3)
-    local items_format = make_padded_formatstring("i", padding, 3)
+    local label_format = make_padded_formatstring("s", padding, indent, 3)
+    local items_format = make_padded_formatstring("i", padding, indent, 3)
 
     printf(label_format, col1_format, col2_format, col3_format);
     for i = 0, data.range - 1 do
@@ -89,13 +101,15 @@ end
 ---@param label MapLabels
 ---@param mapped int[]
 ---@param count int
-function print_mapped(label, mapped, count)
+---@param tab? int
+function print_mapped(label, mapped, count, tab)
+    local indent = make_indent(tab)
     local col1_format = "src {".. label.src .."}"
     local col2_format = "dst {".. label.dst .."}"
 
     local padding = math.max(#col1_format, #col2_format)
-    local label_format = make_padded_formatstring("s", padding, 2)
-    local items_format = make_padded_formatstring("i", padding, 2)
+    local label_format = make_padded_formatstring("s", padding, indent, 2)
+    local items_format = make_padded_formatstring("i", padding, indent, 2)
 
     printf("%s-to-%s map: (%i elements)\n", label.src, label.dst, count)
     printf(label_format, col1_format, col2_format);
@@ -106,22 +120,34 @@ function print_mapped(label, mapped, count)
     end
 end
 
+---@param start num
+---@param stop num
+local function make_range_string(start, stop)
+    return string.format("[%.0f...%.0f]", start, stop)
+end
+
 -- Print out the current map's src and dst value ranges.
 ---@param label MapLabels
 ---@param data MapRange
 ---@param limit tbl
-function print_mapping_ranges(label, data, limit)
-    printf("\t{%s} (%.0f...%.0f) => {%s} (%.0f...%.0f)\n", 
-            label.src, data.src, limit.src,
-            label.dst, data.dst, limit.dst)
+---@param tabs? int
+function print_mapping_ranges(label, data, limit, tabs)
+    local indent = make_indent(tabs)
+    local ranges = {
+        src = make_range_string(data.src, limit.src),
+        dst = make_range_string(data.dst, limit.dst),
+    }
+    printf("%s[\"%s-to-%s map\"] = ", indent, label.src, label.dst)
+    printf("\"%s=>%s\",\n", ranges.src, ranges.dst)
 end
 
 ---@param label MapLabels
 ---@param source int
 ---@param mapped int
-function print_final_mapping(label, source, mapped)
-    printf("\t<MAPPED> %s %s => %s: %.0f\n", 
-            label.src, source, label.dst, mapped)
+---@param tab? int
+function print_final_mapping(label, source, mapped, tab)
+    local indent = make_indent(tab)
+    printf("%s--%s %s => %s: %.0f\n", indent, label.src, source, label.dst, mapped)
 end
 
 --------------------------------------------------------------------------------
@@ -131,65 +157,80 @@ end
 function isarray(tbl)
     local arraysize = #tbl -- `#` operator only considers numeric keys
     local actualsize = 0 -- non-numeric keys are counted in `arraysize`
-    for k in pairs(tbl) do
+    for _ in pairs(tbl) do
         actualsize = actualsize + 1
     end
     return (arraysize == actualsize)
 end
 
--- Lookup table to determine how to convert table keys to strings for output.
--- I still find it funny that non-string and non-integer keys are valid
----@type table<function, fun(key:str|int):str>
-local key_fns = {
-    [ipairs] = function(key)
-        return string.format("[%i]", key)
-    end,
-    [pairs] = function(key)
-        return tostring(key)
+-- Convert the given table key `k` for prettier output.
+-- Numerical indexes are converted to `"[%i]"`, everything else is `tostring`'d.
+local function convert_key(indent, k)
+    if type(k) == "number" then
+        return string.format("[%.0f]", k)
+    else
+        return tostring(k)
     end
-}
+end
 
----@param item_isarray bool
-local function determine_fns(item_isarray)
-    local pairs_fn = (item_isarray and ipairs) or pairs
-    local key_fn = (item_isarray and key_fns[ipairs]) or key_fns[pairs_fn]
-    return pairs_fn, key_fn
+-- Surround strings with quotes for differentiation.
+local function convert_value(v)
+    return (type(v) == "string" and '"'..v..'"') or tostring(v)
+end
+
+-- Usually, you want to indent one more to `tabs` to show this element as being
+-- under the scope of a table.
+local function print_entry(tabs, key, value, endl)
+    local indent = make_indent(tabs)
+    printf("%s%s=%s,%s", indent, key, value, endl)
 end
 
 -- Print a generic key-value pair table. Can recursively print subtables!
 ---@param tbl tbl
 ---@param name str
----@param tabs? int Default to 0.
----@param pairs_fn? function Default to `pairs`.
----@param key_fn? fun(key:str|int):str Default to no fn, uses `tostring(key)`.
-function print_table(tbl, name, tabs, pairs_fn, key_fn)
+---@param tabs? int How much to indent by: `0` (default)
+---@param iterator_fn? function Pass one of: `ipairs` or `pairs` (default)
+---@param recurse? int Limit to stop recursing at: `8` (default)
+function print_table(tbl, name, tabs, iterator_fn, recurse)
     tabs = tabs or 0
-    pairs_fn = pairs_fn or pairs
-    key_fn = key_fn or key_fns[pairs_fn]
+    recurse = recurse or 8
+    if recurse and (recurse <= 0) then
+        return
+    end
+    iterator_fn = iterator_fn or pairs
 
-    local indent = string.rep("\t", tabs)
-    printf("%s%s = {\n", indent, name)
+    -- local endl = (isarray(tbl) and "\n") or ""
+    local endl = "\n"
+    local indent = make_indent(tabs)
+    printf("%s%s = {%s", indent, name, endl)
 
     -- Dump information of 0-based tables, Lua iterators don't catch these
     if tbl[0] then
-        printf("\t%s%s=%s,\n", indent, key_fn(0), tbl[0])
+        print_entry(tabs + 1, convert_key(indent, 0), tbl[0], endl)
     end
 
-    for key, item in pairs_fn(tbl) do
-        local itemname = key_fn(key)
-        if type(item) == "table" then
-            -- Don't overwrite caller's functions, you may screw something up!
-            local _pairs_fn, _key_fn = determine_fns(isarray(item))
-            -- lol recursion
-            print_table(item, itemname, tabs + 1, _pairs_fn, _key_fn)
+    for elem_key, elem_value in iterator_fn(tbl) do
+        local elem_name = convert_key(indent, elem_key)
+        if type(elem_value) == "table" then
+            --! Prolly infinite loop if 2/more tables point back to each other
+            print_table(
+                elem_value,
+                elem_name,
+                tabs + 1, 
+                (isarray(elem_value) and ipairs) or pairs,
+                recurse - 1
+            )
         else
-            -- Surround strings with quotes for differentiation
-            item = (type(item) == "string" and '"'..item..'"') or tostring(item)
-            -- Indent one more to show this element as under scope of table
-            printf("\t%s%s=%s,\n", indent, itemname, item)
+            print_entry(tabs + 1, elem_name, convert_value(elem_value), endl)
         end
     end
-    printf("%s},\n", indent)
+    -- For generic K-V tables, don't indent the last element as there's no newline
+    -- we want to cram them into one line.
+    -- local closingbracket_startl = (isarray(tbl) and indent) or ""
+
+    -- In 0 indent scope (e.g. primary table), don't add comma after the bracket
+    local brace_endl = (tabs > 0 and ",") or ""
+    printf("%s}%s%s", indent, brace_endl, endl)
 end
 
 -- Print an ordered table which is effectively an array.
