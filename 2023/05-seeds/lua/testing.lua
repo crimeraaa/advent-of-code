@@ -1,167 +1,105 @@
 require("util/common")
 require("util/stdio")
+require("util/string")
 require("util/prettyprint")
 
-require("helpers")
+require("newhelpers")
 
-local PROJECT_DIR = WORKSPACE_DIR .. convert_to_ospath("2023/05-seeds/")
+local PROJECT_DIR = WORKSPACE_DIR .. convert_OSpath("2023/05-seeds/")
 
 local FALLBACK = PROJECT_DIR .. "sample.txt"
 
+---@param seedsline str
+local function make_seeds_db(seedsline)
+    local db = {} ---@type NewRange[]
+    for first, second in seedsline:gmatch("(%d+) (%d+)") do
+        db[#db + 1] = NewRange.new(first, second) -- calls tonumber internally
+    end
+    return db
+end
+
 ---@param lines str[]
-local function parse_lines(lines)
-    local seeds = {} ---@type SeedPair[]
-    local database = {} ---@type tbl<str, Map>
+local function make_maps_db(lines)
+    local db = {} ---@type tbl<str, NewMap> Hashtable that we can "query"
 
-    -- Keep handle in memory across loop scope so we can modify it,
-    -- as `label_` variables may be nil values whenever they're matched.
-    local maphandle ---@type Map
+    -- Hold string matches of current map's source and target category names.
+    local label = {src="", dst=""} ---@type NewLabel
 
-    local label = {src="",dst=""} ---@type MapLabels
-    local value = {src=0,dst=0,range=0} ---@type MapRange
+    -- hold string matches of mapping ranges, need convert to numbers later
+    -- when updating the current map's list of possible ranges.
+    local ranges = {src="",dst="",length=""} 
+
+    -- Keep a pointer outside of loop scope so we can poke at the current map.
+    ---@type NewMap
+    local handle 
 
     for _, line in ipairs(lines) do
-        -- I'm assuming the labels and values can't exist at the same time.
+        ---@type str?, str?
         label.src, label.dst = line:match("(%w+)%-to%-(%w+) map:")
 
-        -- Watch the order, remember format is: {dst} {src} {range}.
-        value.dst, value.src, value.range = line:match("(%d+) (%d+) (%d+)")
+        -- Watch the order! Remember format is: {dst} {src} {range}.
+        ---@type str?, str?, str?
+        ranges.dst, ranges.src, ranges.length = line:match("(%d+) (%d+) (%d+)")
 
-        if line:find("seeds: [%d%s]+") then
-            for start, range in line:gmatch("(%d+) (%d+)") do
-                seeds[#seeds + 1] = {
-                    start = tonumber(start),
-                    range = tonumber(range)
-                }
-            end
-        elseif label.src then
-            ---@type Map New category key found so hash it.
-            database[label.src] = {label = copy_table(label), data = {}}
-            -- Assign so we can use it when values are found
-            maphandle = database[label.src] ---@type Map
-        elseif value.dst then
-            maphandle.data[#maphandle.data + 1] = copy_table(value, tonumber)
+        -- Main assumption: label and data don't exist on the same line!
+        if label.src and label.dst then
+            -- New category, so hash it!
+            ---@type NewMap
+            db[label.src] = {
+                label = copy_table(label), -- copy by value, not pointer
+                ranges = {}
+            }
+            handle = db[label.src]
+        elseif ranges.dst and ranges.src and ranges.length then
+            -- Update current category's possible mapping/s, there can be many
+            handle.ranges[#handle.ranges + 1] = {
+                src = NewRange.new(ranges.src, ranges.length),
+                dst = NewRange.new(ranges.dst, ranges.length)
+            }
         end
     end
-    return seeds, database
+    return db
 end
 
----@param handle SeedPair
----@param data MapRange
----@param indent str[]
----@param tab int
-local function loop_submaps(handle, data, indent, tab)
-    -- Given `{dst=50,src=98,range=2}` so offset = `dst-src`.
-    -- 
-    -- We then get `50 - 98 = -48` as our value to map by.
-    local offset = data.dst - data.src
-
-    -- These are inclusive.
-    local limit_src, limit_dst = get_maprange_limits(data)
-    local range_src, range_dst = make_map_rangestrs(data)
-
-    printf("%s%s => %s", indent[tab], range_src, range_dst)
-    printf("%soffset: %.0f\n", indent[tab], offset, limit_src, limit_dst)
-
-    if is_in_range(handle.start, data.src, limit_src) then
-        local old = handle.start -- keep around, need it quite a bit.
-        local new = old + offset
-
-        printf("%sRemap handle.start: %.0f=>%.0f\n", indent[tab], old, new)
-        if not is_in_range(new + handle.range, data.src, limit_src) then
-            printf("%sRemap handle.range: %.0f\n", indent[tab], handle.range)
-            ---@type SeedPair
-            local left_src = {
-                start = old, 
-                range = limit_src - old + 1 -- range is exclusive so add 1 to offset
-            }
-            local left_dst = {
-                start = new,
-                range = left_src.range
-            }
-            printf(
-                "%ssubmap: src%s=>dst%s\n", 
-                indent[tab+1], 
-                make_rangestr(left_src.start, left_src.range),
-                make_rangestr(left_dst.start, left_dst.range)
-            )
-
-            ---@type SeedPair
-            local right_src = {
-                start = limit_src + 1, -- add 1 for next element, 
-                range = (old + handle.range - 1) - limit_src -- sub 1 for endpoint.
-            }
-            printf(
-                "%ssubmap: src%s=>TODO: get outside mapping\n", 
-                indent[tab+1], 
-                make_rangestr(right_src.start, right_src.range)
-            )
-        else
-            printf("%sNo need remap handle.range: %.0f\n", indent[tab], handle.range)
-        end
-        handle.start = new
-    end 
-end
-
----@param seeds SeedPair
----@param database tbl<str, Map>
-local function find_location(seeds, database)
-    local seedrange = make_rangestr(seeds.start, seeds.range)
-    local map = database["seed"] ---@type Map we start by querying key "seed".
-
-    -- We will definitely have multiple mappings that are not contiguous.
-    -- It's 2D so we can have multimaps.
-    ---@type SeedPair[][] 
-    local mapped = {} 
-
-    -- sub_i is the index of which multimap we're poking at
-    local main_i, sub_i = 1, 1 
-
-    mapped[main_i] = {
-        {start = seeds.start, range = seeds.range}
-    }
-    printf("Seeds: %s\n", seedrange)
-
-    local tab = 1
-    -- Indent levels so we don't construct the strings over and over.
-    local indent = {
-        make_indent(tab+0),
-        make_indent(tab+1),
-        make_indent(tab+2),
-        make_indent(tab+3)
-    }
-    
-    while map do
-        print_handles(mapped, main_i, sub_i, indent, tab)
-        printf("%s%s-to-%s map:\n", indent[tab], map.label.src, map.label.dst)
-        main_i = main_i + 1
-        mapped[main_i] = make_handle_array(mapped, main_i - 1, sub_i)
-        for loop_i = 1, sub_i do
-            local handle = mapped[main_i][loop_i]
-            for _, data in pairs(map.data) do
-                loop_submaps(handle, data, indent, tab + 1)
-                -- local left, right = loop_submaps(handle, data, indent, tab + 1)
-                -- if left and right then
-                --     mapped[main_i][sub_i] = left -- Replace the original map
-                --     mapped[main_i][sub_i + 1] = right -- Newly split map!
-                --     sub_i = sub_i + 1
-                -- end
-            end
-            printf("\n")
-        end
-        map = database[map.label.dst]
-    end
+-- Check if `range.src.length` and `range.dst.length` are the same.
+---@param range NewMapRanges
+local function get_map_rangesize(range)
+    local _Src, _Dst = range.src.length, range.dst.length
+    return (_Src == _Dst) and make_lengthstr(_Src) or "TODO: range lengths inconsistent!"
 end
 
 ---@param argc int
 ---@param argv str[]
 local function main(argc, argv)
     local lines = readfile((argc == 1 and argv[1]) or FALLBACK)
-    
-    local seedpairs, database = parse_lines(lines)
 
-    for _, seeds in ipairs(seedpairs) do
-        find_location(seeds, database)
+    -- the "seeds: %d %d..." line, but only the numbers part!
+    -- `table.remove` takes care of rearranging the input table for us. We do so
+    -- because we want to parse only the ranges afterwards.
+    -- 
+    -- Note that `string.trim` is a custom function in `utils/string.lua`.
+    ---@type str
+    local seedsline = table.remove(lines, 1):match("[%d%s]+"):trim()
+    local seeds_db = make_seeds_db(seedsline)
+    local maps_db = make_maps_db(lines)
+
+    -- Dump seed ranges
+    for _, seed in ipairs(seeds_db) do
+        printf("seeds%s %s\n", make_rangestr(seed), make_lengthstr(seed.length))
+    end
+
+    -- Always start by querying the "seed" table first!
+    local maphandle = maps_db["seed"] ---@type NewMap 
+
+    -- Dump mapping ranges
+    while maphandle do
+        printf("%s-to-%s map:\n", maphandle.label.src, maphandle.label.dst)
+        for _, range in ipairs(maphandle.ranges) do
+            local _SrcRange, _DstRange = make_rangestr(range.src), make_rangestr(range.dst)
+            local _Size = get_map_rangesize(range)
+            printf("\t%-9s => %-9s %s\n", _SrcRange, _DstRange, _Size)
+        end
+        maphandle = maps_db[maphandle.label.dst]
     end
 end
 

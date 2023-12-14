@@ -1,0 +1,9 @@
+{
+    "runtime.version": "Lua 5.1",
+    "runtime.path": [
+        "?.lua",
+        "?/init.lua",
+        "util/?.lua"
+    ],
+    "runtime.pathStrict": false
+}

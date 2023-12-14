@@ -46,7 +46,7 @@ end
 -- Transforms `path` to the version containing the OS's preferred backslashes.
 -- This assumes that only Windows is the weird one using \ slashes.
 ---@param path str
-function convert_to_ospath(path)
+function convert_OSpath(path)
     local slashtype = (is_windows() and '\\') or '/'
     return path:gsub("[/\\]", slashtype)
 end
