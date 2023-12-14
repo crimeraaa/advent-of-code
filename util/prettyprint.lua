@@ -13,6 +13,15 @@ for i = 0, 100 do
     INDENT[i] = make_indent(i)
 end
 
+-- Create an evenly spaced format string: `"| {label} | {label} | ... |"`
+---@param padding int How much to space out by.
+---@param reps? int How many cells to create. Default: `1`
+function make_padded_format(padding, reps)
+    reps = reps or 1
+    local _FormatString = "| %-".. padding .."s "
+    return string.rep(_FormatString, reps) .. "|\n"
+end
+
 --------------------------------------------------------------------------------
 ----------------------- PRETTY TABLE PRINTOUT FUNCTIONS ------------------------
 --------------------------------------------------------------------------------
