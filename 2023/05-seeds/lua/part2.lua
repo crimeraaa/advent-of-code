@@ -1,4 +1,9 @@
-require("helpers")
+require "util/common"
+require "util/stdio"
+require "util/string"
+require "util/table"
+require "util/prettyprint"
+require "helpers"
 
 ---@param line str
 local function make_seedtable(line)
@@ -20,18 +25,6 @@ local function make_mapcategory(matched_src, matched_dst)
         label = {src = matched_src, dst = matched_dst}, 
         data = {}
     }
-end
-
--- Creates a copy of table `data` where all values are converted to numbers.
----@param source tbl
----@param copy_fn? fun(v: any):any Custom function to convert values if needed.
-local function copy_table(source, copy_fn)
-    local target = {}
-    for k, v in pairs(source) do
-        -- Invoke `copy_fn` only if exists
-        target[k] = (copy_fn and copy_fn(v)) or v
-    end
-    return target
 end
 
 -- Define here so function not created everytime it's needed in the loop.
@@ -72,7 +65,7 @@ local function make_seedmap_table(lines)
         elseif values.dst and values.src and values.range then 
             -- found new data line for the current map
             index = index + 1 
-            database[category].data[index] = copy_table(values, copy_tonumber)
+            database[category].data[index] = table.copy(values, copy_tonumber)
         end
     end
     return seeds, database

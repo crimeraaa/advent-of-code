@@ -1,5 +1,5 @@
-require("util/stdio")
-require("util/string")
+require "util/stdio"
+require "util/string"
 
 ---@param tabs? int If not specified, returns an empty string.
 function make_indent(tabs)
@@ -19,7 +19,7 @@ end
 function make_padded_format(padding, reps)
     reps = reps or 1
     local _FormatString = "| %-".. padding .."s "
-    return string.rep(_FormatString, reps) .. "|\n"
+    return _FormatString:rep(reps) .. "|\n"
 end
 
 --------------------------------------------------------------------------------
@@ -27,44 +27,43 @@ end
 --------------------------------------------------------------------------------
 
 local function is_array(tbl)
-    local arraysize = #tbl -- `#` operator only considers numeric keys
-    local actualsize = 0 -- non-numeric keys are counted in `arraysize`
+    local _ArraySize = #tbl -- `#` operator only considers numeric keys
+    local _TotalSize = 0 -- non-numeric keys are not counted in `_ArraySize`.
     for _ in pairs(tbl) do
-        actualsize = actualsize + 1
+        _TotalSize = _TotalSize + 1
     end
-    return (arraysize == actualsize)
+    return (_ArraySize == _TotalSize)
 end
 
 -- Convert the given table key `k` for prettier output.
 -- Numerical indexes are converted to `"[%i]"`, everything else is `tostring`'d.
-local function convert_key(indent, k)
-    if type(k) == "number" then
-        return string.format("[%.0f]", k)
-    else
-        return tostring(k)
-    end
+local function convert_key(k)
+    local _IsNum = (type(k) == "number") 
+    local _IsStr = (type(k) == "string")
+    local _Format = (_IsNum and "[%.0f]") or (_IsStr and "[\"%s\"]") or "[%s]"
+    local _Keyname = (_IsNum and tonumber(k)) or tostring(k)
+    return _Format:format(_Keyname)
 end
 
 -- Surround strings with quotes for differentiation or just convert non-strings.
 local function convert_value(v)
-    return (type(v) == "string" and '"'..v..'"') or tostring(v)
+    return (type(v) == "string" and string.format("\"%s\"", v)) or tostring(v)
 end
 
 -- Usually, you want to pass `tabs + 1` to show this element as being
 -- under the scope of a table.
-local function print_entry(tabs, key, value, endl)
-    local indent = make_indent(tabs)
-    printf("%s%s=%s,%s", indent, key, value, endl)
+local function print_entry(tab, key, value, endl)
+    printf("%s%s=%s,%s", INDENT[tab], key, value, endl)
 end
 
 -- Print a generic key-value pair table. Can recursively print subtables!
 ---@param tbl tbl
 ---@param name str
----@param tabs? int How much to indent by: `0` (default)
+---@param tab? int How much to indent by: `0` (default)
 ---@param iterator_fn? function Pass one of: `ipairs` or `pairs` (default)
 ---@param recurse? int Limit to stop recursing at: `8` (default)
-function print_table(tbl, name, tabs, iterator_fn, recurse)
-    tabs = tabs or 0
+function print_table(tbl, name, tab, iterator_fn, recurse)
+    tab = tab or 0
     recurse = recurse or 8
     if recurse and (recurse <= 0) then
         return
@@ -72,28 +71,22 @@ function print_table(tbl, name, tabs, iterator_fn, recurse)
     iterator_fn = iterator_fn or pairs
 
     -- local endl = (isarray(tbl) and "\n") or ""
-    local endl = "\n"
-    local indent = make_indent(tabs)
-    printf("%s%s = {%s", indent, name, endl)
+    local _Endl = "\n"
+    printf("%s%s = {%s", INDENT[tab], name, _Endl)
 
     -- Dump information of 0-based tables, Lua iterators don't catch these
     if tbl[0] then
-        print_entry(tabs + 1, convert_key(indent, 0), tbl[0], endl)
+        print_entry(tab + 1, convert_key(0), convert_value(tbl[0]), _Endl)
     end
 
-    for elem_key, elem_value in iterator_fn(tbl) do
-        local elem_name = convert_key(indent, elem_key)
-        if type(elem_value) == "table" then
-            --! Prolly infinite loop if 2/more tables point back to each other
-            print_table(
-                elem_value,
-                elem_name,
-                tabs + 1, 
-                (is_array(elem_value) and ipairs) or pairs,
-                recurse - 1
-            )
+    for k, v in iterator_fn(tbl) do
+        local _ElemName = convert_key(k)
+        if type(v) == "table" then
+            --! Prolly infinite loop if 2/more tables point back to each other.
+            local _PairsFn = (is_array(v) and ipairs) or pairs
+            print_table(v, _ElemName, tab + 1, _PairsFn, recurse - 1)
         else
-            print_entry(tabs + 1, elem_name, convert_value(elem_value), endl)
+            print_entry(tab + 1, _ElemName, convert_value(v), _Endl)
         end
     end
     -- For generic K-V tables, don't indent the last element as there's no newline
@@ -101,8 +94,8 @@ function print_table(tbl, name, tabs, iterator_fn, recurse)
     -- local closingbracket_startl = (isarray(tbl) and indent) or ""
 
     -- In 0 indent scope (e.g. primary table), don't add comma after the bracket
-    local brace_endl = (tabs > 0 and ",") or ""
-    printf("%s}%s%s", indent, brace_endl, endl)
+    local _BraceEnd = (tab > 0 and ",") or ""
+    printf("%s}%s%s", INDENT[tab], _BraceEnd, _Endl)
 end
 
 -- Print an ordered table which is effectively an array.

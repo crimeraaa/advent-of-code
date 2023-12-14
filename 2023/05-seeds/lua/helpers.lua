@@ -169,7 +169,7 @@ function make_handle_array(mapped, main_i, sub_i)
     local copy = {} ---@type SeedPair[]
     for loop_i = 1, sub_i do
         -- start of with previous values
-        copy[loop_i] = copy_table(mapped[main_i][loop_i])
+        copy[loop_i] = table.copy(mapped[main_i][loop_i])
     end
     return copy
 end

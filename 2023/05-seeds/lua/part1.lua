@@ -1,5 +1,6 @@
-require("util/stdio")
-require("helpers")
+require "util/stdio"
+require "util/table"
+require "helpers"
 
 ---@param line str
 local function make_seedtable(line)
@@ -55,7 +56,7 @@ local function make_seedmap_table(lines)
         elseif values.dst and values.src and values.range then 
             -- found new data line for the current map
             index = index + 1 
-            maps[category].data[index] = copy_table(values, tonumber)
+            maps[category].data[index] = table.copy(values, tonumber)
         end
     end
     return seeds, maps

@@ -1,7 +1,8 @@
-require("util/common")
-require("util/stdio")
-require("util/string")
-require("util/prettyprint")
+require "util/common"
+require "util/stdio"
+require "util/string"
+require "util/table"
+require "util/prettyprint"
 
 require("newhelpers")
 
@@ -48,7 +49,7 @@ local function make_maps_db(lines)
             -- New category, so hash it!
             ---@type NewMap
             db[label.src] = {
-                label = copy_table(label), -- copy by value, not pointer
+                label = table.copy(label), -- copy by value, not pointer
                 ranges = {}
             }
             handle = db[label.src]
