@@ -5,7 +5,7 @@ require("util/prettyprint")
 
 require("newhelpers")
 
-local PROJECT_DIR = WORKSPACE_DIR .. convert_OSpath("2023/05-seeds/")
+local PROJECT_DIR = WORKSPACE_DIR .. convert_OSpath("/2023/05-seeds/")
 
 local FALLBACK = PROJECT_DIR .. "sample.txt"
 
@@ -61,11 +61,47 @@ local function make_maps_db(lines)
     return db
 end
 
--- Check if `range.src.length` and `range.dst.length` are the same.
----@param range NewMapRanges
-local function get_map_rangesize(range)
-    local _Src, _Dst = range.src.length, range.dst.length
-    return (_Src == _Dst) and make_lengthstr(_Src) or "TODO: range lengths inconsistent!"
+-- Your starting `query` can beginning "seed" or maybe do some smart recursion.
+---@param query str Used to query into `database`.
+---@param database tbl<str, NewMap> All possible {thing}-to-{thing} mappings.
+---@param seed NewRange Current seed range we're checking for.
+---@param tab? int Index into the global `INDENT` table, can be 0.
+local function query_maps(query, database, seed, tab)
+    tab = tab or 0
+    local handle = database[query] ---@type NewMap
+    -- For now, dump mapping ranges
+    while handle do
+        printf("%s%s-to-%s map:\n", INDENT[tab], handle.label.src, handle.label.dst)
+        -- This map may have 1 or more src-to-data relationships
+        for _, range in ipairs(handle.ranges) do
+            local _SrcRange, _DstRange = make_rangestr(range.src), make_rangestr(range.dst)
+            local _Size = get_map_rangesize(range)
+            local _Offset = range.dst.start - range.src.start
+
+            -- 1 indent higher cuz part of mapping block
+            printf("%s%-9s => %-9s %s\n", INDENT[tab+1], _SrcRange, _DstRange, _Size)
+
+            -- Determine where how our seed range fits in this mapping
+            if seed.start >= range.src.start and seed.start <= range.src.endpt then
+                local _Start, _Endpt = seed.start + _Offset, seed.endpt + _Offset
+                printf("%s^seed.start: %.0f => %.0f\n", INDENT[tab+2], seed.start, _Start)
+                printf("%s^seed.endpt: %.0f => %.0f ", INDENT[tab+2], seed.endpt, _Endpt)
+                seed.start = _Start
+                if seed.endpt >= range.src.start and seed.endpt <= range.src.endpt then
+                    seed.endpt = _Endpt
+                    printf("\n")
+                else
+                    -- TODO: determine values of child tables first
+                    printf("intersects multiple maps!\n")
+                    -- TODO: recurse? use return to end control flow here 
+                    -- in which case should prolly make a new `Range` object
+                    
+                end
+            end
+        end
+        query = handle.label.dst -- next query is this mapping's destination
+        handle = database[query]
+    end
 end
 
 ---@param argc int
@@ -86,21 +122,10 @@ local function main(argc, argv)
     -- Dump seed ranges
     for _, seed in ipairs(seeds_db) do
         printf("seeds%s %s\n", make_rangestr(seed), make_lengthstr(seed.length))
+        -- Always start by querying the "seed" (not "seeds") table first!
+        query_maps("seed", maps_db, seed, 1)
     end
 
-    -- Always start by querying the "seed" table first!
-    local maphandle = maps_db["seed"] ---@type NewMap 
-
-    -- Dump mapping ranges
-    while maphandle do
-        printf("%s-to-%s map:\n", maphandle.label.src, maphandle.label.dst)
-        for _, range in ipairs(maphandle.ranges) do
-            local _SrcRange, _DstRange = make_rangestr(range.src), make_rangestr(range.dst)
-            local _Size = get_map_rangesize(range)
-            printf("\t%-9s => %-9s %s\n", _SrcRange, _DstRange, _Size)
-        end
-        maphandle = maps_db[maphandle.label.dst]
-    end
 end
 
 return main(#arg, arg)

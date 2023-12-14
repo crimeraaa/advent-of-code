@@ -28,8 +28,8 @@ However, these defaults are overwritten when you set LUA_PATH yourself!
 -- Ugly but works: https://stackoverflow.com/a/6036884
 CWD = os.getenv("PWD") or io.popen("cd", "r"):read("*l") ---@type str
 
--- The workspace's main directory.
-WORKSPACE_DIR = CWD:match("(.-advent%-of%-code[/\\])") ---@type str
+-- The workspace's main directory. Note that it may not have the trailing slash!
+WORKSPACE_DIR = CWD:match("(.-advent%-of%-code)") ---@type str
 
 -- Taken from: https://stackoverflow.com/a/23535333
 function script_path()

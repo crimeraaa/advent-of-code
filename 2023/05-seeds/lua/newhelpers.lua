@@ -45,3 +45,10 @@ end
 function make_lengthstr(length)
     return string.format("(%.0f elements)", length)
 end
+
+-- Check if `range.src.length` and `range.dst.length` are the same.
+---@param range NewMapRanges
+function get_map_rangesize(range)
+    local _Src, _Dst = range.src.length, range.dst.length
+    return (_Src == _Dst) and make_lengthstr(_Src) or "TODO: range lengths inconsistent!"
+end
