@@ -9,6 +9,8 @@ local PROJECT_DIR = WORKSPACE_DIR .. convert_OSpath("/2023/05-seeds/")
 
 local FALLBACK = PROJECT_DIR .. "sample.txt"
 
+local LOCATIONS = {} ---@type num[]
+
 ---@param seedsline str
 local function make_seeds_db(seedsline)
     local db = {} ---@type NewRange[]
@@ -69,39 +71,59 @@ end
 local function query_maps(query, database, seed, tab)
     tab = tab or 0
     local handle = database[query] ---@type NewMap
+    local lowest = math.huge
     -- For now, dump mapping ranges
     while handle do
-        printf("%s%s-to-%s map:\n", INDENT[tab], handle.label.src, handle.label.dst)
+        --! PRINTOUT 
+        print_seed(seed, tab - 1)
+        printf(INDENT[tab].."%s-to-%s map:\n", handle.label.src, handle.label.dst)
+
         -- This map may have 1 or more src-to-data relationships
-        for _, range in ipairs(handle.ranges) do
+        for i, range in ipairs(handle.ranges) do
             local _SrcRange, _DstRange = make_rangestr(range.src), make_rangestr(range.dst)
             local _Size = get_map_rangesize(range)
             local _Offset = range.dst.start - range.src.start
-
+    
             -- 1 indent higher cuz part of mapping block
-            printf("%s%-9s => %-9s %s\n", INDENT[tab+1], _SrcRange, _DstRange, _Size)
-
+            --! PRINTOUT 
+            printf(INDENT[tab + 1].."%-9s => %-9s %s\n", _SrcRange, _DstRange, _Size)
+    
             -- Determine where how our seed range fits in this mapping
             if seed.start >= range.src.start and seed.start <= range.src.endpt then
-                local _Start, _Endpt = seed.start + _Offset, seed.endpt + _Offset
-                printf("%s^seed.start: %.0f => %.0f\n", INDENT[tab+2], seed.start, _Start)
-                printf("%s^seed.endpt: %.0f => %.0f ", INDENT[tab+2], seed.endpt, _Endpt)
-                seed.start = _Start
+                local _Start = seed.start + _Offset
+                local _Endpt = seed.endpt + _Offset
+                --! PRINTOUT 
+                printf(INDENT[tab + 2].."^seed.start: %.0f => %.0f\n", seed.start, _Start)
+                printf(INDENT[tab + 2].."^seed.endpt: %.0f => %.0f ", seed.endpt, _Endpt)
+
                 if seed.endpt >= range.src.start and seed.endpt <= range.src.endpt then
+                    seed.start = _Start
                     seed.endpt = _Endpt
+                    lowest = _Start
+                    --! PRINTOUT 
                     printf("\n")
+                    break -- Don't loop anymore! will mess up the results.
                 else
-                    -- TODO: determine values of child tables first
-                    printf("intersects multiple maps!\n")
-                    -- TODO: recurse? use return to end control flow here 
-                    -- in which case should prolly make a new `Range` object
-                    
+                    local _Left = NewRange.new(seed.start, range.src.endpt, true)
+                    local _Right = NewRange.new(_Left.endpt + 1, seed.endpt, true)
+                    --! PRINTOUT 
+                    printf("goes across maps!\n%sSubmaps:\n", INDENT[tab + 2])
+                    print_seed(_Left, tab + 3)
+                    print_seed(_Right, tab + 3)
+
+                    -- Use this newly split maps on the same query to get the actual value
+                    query_maps(query, database, _Left, tab + 1)
+                    query_maps(query, database, _Right, tab + 1)
+                    return -- no need current map so end control flow here
                 end
             end
         end
-        query = handle.label.dst -- next query is this mapping's destination
+        query = handle.label.dst -- next query is the destination, nicely linked
         handle = database[query]
     end
+    --! PRINTOUT 
+    printf(INDENT[tab].."location: %.0f\n\n", lowest)
+    LOCATIONS[#LOCATIONS + 1] = lowest
 end
 
 ---@param argc int
@@ -121,11 +143,20 @@ local function main(argc, argv)
 
     -- Dump seed ranges
     for _, seed in ipairs(seeds_db) do
-        printf("seeds%s %s\n", make_rangestr(seed), make_lengthstr(seed.length))
         -- Always start by querying the "seed" (not "seeds") table first!
         query_maps("seed", maps_db, seed, 1)
     end
 
+    local lowest = math.huge
+    printf("Locations: ")
+    for _, v in ipairs(LOCATIONS) do
+        printf("%.0f, ", v)
+        if v < lowest then
+            lowest = v
+        end
+    end
+    printf("\nLowest: %.0f\n", lowest)
+    return 0
 end
 
 return main(#arg, arg)

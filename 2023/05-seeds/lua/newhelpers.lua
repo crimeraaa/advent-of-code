@@ -10,15 +10,17 @@ NewRange = {}
 -- 
 -- This is because `range` is the number of values in the map.
 -- `[98...99]` is a range of 2 values, but `[98...100]` is a range of 3 values.
----@param start str|num
----@param length str|num
-function NewRange.new(start, length)
-    local _Start, _Length = tonumber(start), tonumber(length)
-    assert(_Start and _Length, "what") -- yell at me so i can figure it out
+---@param left str|num
+---@param right str|num
+---@param dont_calculate? bool `true` = assign `right` to `endpt` as is.
+function NewRange.new(left, right, dont_calculate)
+    local _Start, _Endpt = tonumber(left), tonumber(right)
+    assert(_Start and _Endpt, "what") -- yell at me so i can figure it out
+    local _Length = (dont_calculate and _Endpt - _Start + 1) or _Endpt
     ---@type NewRange
     return {
         start = _Start,
-        endpt = _Start + _Length - 1,
+        endpt = (dont_calculate and _Endpt) or (_Start + _Endpt - 1),
         length = _Length
     }
 end
@@ -51,4 +53,11 @@ end
 function get_map_rangesize(range)
     local _Src, _Dst = range.src.length, range.dst.length
     return (_Src == _Dst) and make_lengthstr(_Src) or "TODO: range lengths inconsistent!"
+end
+
+---@param seed NewRange
+---@param tab? int
+function print_seed(seed, tab)
+    tab = tab or 0
+    printf(INDENT[tab].."seeds%s %s\n", make_rangestr(seed), make_lengthstr(seed.length))
 end

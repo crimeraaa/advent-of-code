@@ -6,14 +6,12 @@ function make_indent(tabs)
     return (tabs and string.rep("\t", tabs)) or ""
 end
 
--- Just index into this so you can quickly set indent levels in printouts.
-INDENT = {
-    [0] = "", -- sort of "base case", e.g. function parameter `tab` == 0
-    make_indent(1),
-    make_indent(2),
-    make_indent(3),
-    make_indent(4),
-}
+-- Index into this so you can quickly set indent "levels" in printouts.
+-- index 0 is a sort of base case: just an empty string, no indentation.
+INDENT = {}
+for i = 0, 100 do
+    INDENT[i] = make_indent(i)
+end
 
 --------------------------------------------------------------------------------
 ----------------------- PRETTY TABLE PRINTOUT FUNCTIONS ------------------------
