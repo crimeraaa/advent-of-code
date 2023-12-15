@@ -5,6 +5,9 @@ require "util/string"
 require "util/table"
 require "util/prettyprint"
 
+PROJECT_DIR = WORKSPACE_DIR .. convert_OSpath("/2023/07-camelcards/")
+FALLBACK = PROJECT_DIR .. "sample.txt"
+
 ---@class CamelCardsHand
 ---@field chars str[] Original hand string split into individual characters.
 ---@field bid num Bid amount to be multiplied by the card's ranking.
@@ -43,6 +46,42 @@ CAMELCARDS.HAND_STRENGTHS = table.invert{
     "FOUR_OF_A_KIND", 
     "FIVE_OF_A_KIND"
 }
+
+-- Assume all our hands have 5 cards.
+CAMELCARDS.HAND_LENGTH = 5
+
+---@param pairs_count 0|1|2
+---@param of_a_kind_count 0|3|4|5
+function get_hand_type(pairs_count, of_a_kind_count)
+    if (pairs_count > 0) and (of_a_kind_count == 0) then
+        return CAMELCARDS.HAND_TYPES.PAIR[pairs_count] 
+    elseif (pairs_count == 1) and (of_a_kind_count == 3) then
+        return "FULL_HOUSE" -- stronger than THREE_OF_A_KIND so prioritize it
+    elseif (pairs_count == 0) and (of_a_kind_count > 0) then
+        -- has indexes [1...5] tho [1...2] are unused
+        -- I'm assuming we'll only ever be able to index [3...5] by this point.
+        return CAMELCARDS.HAND_TYPES.OF_A_KIND[of_a_kind_count]
+    end
+    return "HIGH_CARD" -- prolly no cards were similar, no pairs, no of a kinds
+end
+
+---@param x CamelCardsHand
+---@param y CamelCardsHand
+function compare_hands(x, y)
+    local _CardStrengths = CAMELCARDS.CARD_STRENGTH
+    -- Compare both hands, char by char
+    for ii = 1, #x.chars do
+        local c, d = x.chars[ii], y.chars[ii]
+        -- Skip same chars as we don't want early return just yet
+        if c ~= d then
+            return _CardStrengths[c] < _CardStrengths[d] 
+        end
+    end
+    -- with return true:  250118459
+    -- with return false: 250120186, this one is correct!
+    return false -- I suppose it makes sense since no strength is greater
+end
+
 --[[------------------ HAND STRENGTHS AND PRIORITIES NOTES ---------------------
 
 HIGH_CARD 
