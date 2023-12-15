@@ -5,47 +5,94 @@ require "util/string"
 require "util/table"
 require "util/prettyprint"
 
+---@class CamelCardsHand
+---@field chars str[] Original hand string split into individual characters.
+---@field bid num Bid amount to be multiplied by the card's ranking.
+---@field type str Hand's type, see: `get_hand_type`.
+
 CAMELCARDS = {}
 
 -- "Query-able" hashtable for card strength values. 
--- `Highest: 'A' => Lowest: '2'`
+-- `Highest: 'A' => Lowest: '2'`.
 -- 
--- TODO: We can hardcode AKQJT, then 9-2 then can be mathematically determined?
+-- We reverse the string first so looking up 'A' gives a higher value than '2'.
 ---@type tbl<str, int> 
-CAMELCARDS.CARD_STRENGTH = table.invert(("AKQJT98765432"):reverse():toarray())
+CAMELCARDS.CARD_STRENGTH = table.invert(string.reverse("AKQJT98765432"):toarray())
 
 -- I typed out the arrangement in order of how they appear on the website.
 -- It doesn't really matter but: https://adventofcode.com/2023/day/7
--- 
--- TODO: Determine mapping strength based on card counts?
--- HIGH_CARD:           No repeated cards.
--- 
---      23456
---      HIGH_CARD has the lowest priority, all others take precedence over it.
--- 
--- [1...2]_PAIR:        [1...2] pairs of [1...2] characters.
--- 
---      33, 22 in "3223T"; 
---      KK, 77 in "KK677";
---      ONE_PAIR and TWO_PAIR are higher priority than HIGH_CARD,
---      but lower than every other category below.
--- 
--- [3..5]_OF_A_KIND:    [3..5] occurences of any 1 character.
--- 
---      QQQ   in "QQQJA"; 
---      AAAAA in "AAAAA"; 
---      555   in "T55J5";
--- 
--- FULL_HOUSE:          3 cards w/ same label, remaining 2 another same label.
--- 
---      "23332"
---      FULL_HOUSE has the highest priority.
-CAMELCARDS.HAND_STRENGTH = table.invert{
-    FIVE_OF_A_KIND = 6,
-    FOUR_OF_A_KIND = 5,
-    FULL_HOUSE = 4,
-    THREE_OF_A_KIND = 3,
-    TWO_PAIR = 2,
-    ONE_PAIR = 1,
-    HIGH_CARD = 0,
+CAMELCARDS.HAND_TYPES = {
+    PAIR = {"ONE_PAIR", "TWO_PAIR"},
+    OF_A_KIND = {
+        "ONE_OF_A_KIND", -- unused but I just want indexes to make sense
+        "TWO_OF_A_KIND", -- ^ditto
+        "THREE_OF_A_KIND", 
+        "FOUR_OF_A_KIND", 
+        "FIVE_OF_A_KIND"
+    }
 }
+
+-- Written deliberately in reverse order. String array turned into lookup table.
+---@type tbl<str, int>
+CAMELCARDS.HAND_STRENGTHS = table.invert{
+    "HIGH_CARD",
+    "ONE_PAIR",
+    "TWO_PAIR",
+    "THREE_OF_A_KIND", 
+    "FULL_HOUSE",
+    "FOUR_OF_A_KIND", 
+    "FIVE_OF_A_KIND"
+}
+--[[------------------ HAND STRENGTHS AND PRIORITIES NOTES ---------------------
+
+HIGH_CARD 
+    DESCRIPTION:
+    Hand contains no repeated cards.
+
+    EXAMPLE/S:
+    None    in  "23456"
+    None    in  "AKQTJ"
+    None    in  "39QK6"
+
+    PRIORITY:
+    Lowest.
+
+ONE_PAIR, TWO_PAIR:        
+    DESCRIPTION:
+    1 or 2 cards in the hand occurs exactly 2 times.
+
+    EXAMPLE/S:
+    33      in  "32T3K"
+    33, 22  in  "3223T" 
+    KK, 77  in  "KK677"
+
+    PRIORITY:
+    Higher than HIGH_CARD, but lower than categories seen below.
+
+THREE_OF_A_KIND, FOUR_OF_A_KIND, FIVE_OF_A_KIND:
+    DESCRIPTION:
+    3 up to 5 occurences of any 1 character.
+
+    EXAMPLE/S:
+    QQQ     in  "QQQJA"
+    AAAAA   in  "AAAAA"
+    KKKK    in  "KKTKK"
+    555     in  "T55J5"
+
+    EXCEPTIONS:
+    333     in  "32233"
+    This is because there is ONE_PAIR (22) and THREE_OF_A_KIND (333),
+    this matches FULL_HOUSE which takes priority over THREE_OF_A_KIND.
+
+FULL_HOUSE:          
+    DESCIPRTION:
+    3 cards in the hand are the same card, and the remaining 2 match each other.
+
+    EXAMPLE/S:
+    333, 22 in  "23332"
+    QQQ, TT in  "QQQJJ"
+
+    PRIORITY:
+    Highest.
+
+------------------------------------------------------------------------------]]
