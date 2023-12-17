@@ -1,3 +1,5 @@
+require "util/array"
+
 -- Get the factors of `value`, stored in an integer array.
 -- 
 -- Note that we only search up to `value / 2`.
@@ -37,34 +39,28 @@ function math.multiples(value, start, stop, source)
     return multiples
 end
 
--- Perform binary search on a integer array.
--- Note that the search is based on equality, so floats might mess up.
----@param array int[] Some sorted array of integer.
----@param target int Value to try to find in the array.
----@param start? int Where in the array to begin searching.
----@param stop? int Where in the array to stop searching.
-function math.binsearch(array, target, start, stop)
-    local left = start or 1
-    local right = stop or #array
-    while left <= right do
-        local middle = math.floor((left + right) / 2)
-        if array[middle] < target then 
-            left = middle + 1 -- Search right-er half of array
-        elseif array[middle] > target then 
-            right = middle - 1 -- Search left-er half of array
-        else -- Found!
-            return array[middle]
-        end
-    end
-    return nil -- fallback
-end
-
 -- Greatest common denominator of a set of values.
-function math.gcd(x, y)
-    local gcd, ctrl = x, y
-    while ctrl ~= 0 do
-        -- For previous value of ctrl, if modulo == 0 then we have the GCD.
-        gcd, ctrl = ctrl, gcd % ctrl
+---@param x num
+---@param y num
+---@param ... num
+function math.gcd(x, y, ...)
+    if select("#", x, y, ...) == 2 then
+        local gcd, rem = x, y
+        -- (gcd=12,rem=8)=>(gcd=8,rem=4)=>(gcd=4,rem=0): return gcd
+        while rem ~= 0 do
+            local tmp = gcd
+            gcd = rem
+            rem = tmp % rem
+        end
+        return gcd
+    end
+    local list = {x, y, ...}
+    local gcd = 0
+    for i, vx, ii, vy in array.two_ipairs(list) do
+        gcd = math.gcd(vx, vy)
+        -- gcd(16,12,8)=>gcd(16,12): 4, resolves to gcd(4,8): 4
+        -- effectively the same as: gcd(gcd(16, 12), 8)
+        list[ii] = gcd
     end
     return gcd
 end
@@ -74,28 +70,17 @@ end
 ---@param y num
 ---@param ... num
 function math.lcm(x, y, ...)
-    if (x == 0) or (y == 0) then
-        return 0
+    if select("#", x, y, ...) == 2 then
+        -- LCM is just abs(x * y) / gcd(x,y), also works for x=0 or y=0
+        return (x * y) / math.gcd(x, y)
     end
-    local lcm = 0
     local list = {x, y, ...}
-    for i, value in ipairs(list) do
-        -- try to poke at value to our right,
-        local ii = i + 1 
-        local right = list[ii]
-
-        -- if list[i + 1] is `nil` don't try to access it or update it
-        if right ~= nil then 
-            -- LCM is effectively: abs(x * y) / gcd(x,y)
-            lcm = (value * right) / math.gcd(value, right)
-
-            print(value, right, lcm)
-            
-            -- update table directly so next call effectively becomes:
-            --      local prev = math.lcm(list[i], list[ + 1])
-            --      math.lcm(prev, list[i + 2])
-            list[ii] = lcm 
-        end
+    local lcm = 0
+    for i, vx, ii, vy in array.two_ipairs(list) do
+        lcm = math.lcm(vx, vy)
+        -- lcm(2,3,5)=>lcm(2,3): 6, resolves to lcm(6,5): 30
+        -- effectively the same as: lcm(lcm(2, 3), 5)
+        list[ii] = lcm
     end
     return lcm
 end
