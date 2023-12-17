@@ -13,13 +13,15 @@ FALLBACK = PROJECT_DIR .. "sample.txt"
 ---@field bid num Bid amount to be multiplied by the card's ranking.
 ---@field type str Hand's type, see: `get_hand_type`.
 
+---@alias LookupTable { [str]:int}
+
 CAMELCARDS = {}
 
 -- "Query-able" hashtable for card strength values. 
 -- `Highest: 'A' => Lowest: '2'`.
 -- 
 -- We reverse the string first so looking up 'A' gives a higher value than '2'.
----@type tbl<str, int> 
+---@type LookupTable
 CAMELCARDS.CARD_STRENGTH = table.invert(string.reverse("AKQJT98765432"):toarray())
 
 -- I typed out the arrangement in order of how they appear on the website.
@@ -36,7 +38,7 @@ CAMELCARDS.HAND_TYPES = {
 }
 
 -- Written deliberately in reverse order. String array turned into lookup table.
----@type tbl<str, int>
+---@type LookupTable
 CAMELCARDS.HAND_STRENGTHS = table.invert{
     "HIGH_CARD",
     "ONE_PAIR",

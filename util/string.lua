@@ -2,6 +2,9 @@
 ------------------------ STRING MANIPULATION FUNCTIONS -------------------------
 --------------------------------------------------------------------------------
 
+-- Split string into individual captures based as separated by `delimiters`.
+-- 
+-- Does not include empty values, use `string.split_keepempty` instead for that.
 ---@param subject str
 ---@param delimiters str
 ---@nodiscard
@@ -21,22 +24,12 @@ end
 ---@param delimiters str
 ---@nodiscard
 function string.split_keepempty(subject, delimiters) 
-    -- 1st capture group is the user's desired match via negation charset.
-    -- it may also be the empty string.
-    -- 
-    -- 2nd capture group is a sort of control, for `EOF` or no more lines.
-    local pattern = "([^"..delimiters.."]*)("..delimiters.."?)"
-
-    -- local pattern = string.format("([^%s]*)(%s?)", delimiter, delimiter)
-    ---@type str[]
-    local captures = {}
-
-    -- Since we speciifed 2 capture groups, expect 2 return values.
+    local pattern = string.format("([^%s]*)(%s?)", delimiters, delimiters)
+    local captures = {} ---@type str[]
+    -- 2 specified capture groups = 2 return values
     for capture, control in subject:gmatch(pattern) do 
         captures[#captures + 1] = capture
-        -- "({delimiter}?)"" may match and capture empty string, in this case
-        -- it probably means end of file or no more lines to parse!
-        if control == "" then 
+        if control == "" then -- EOF/no more lines to parse!
             return captures 
         end 
     end
@@ -47,11 +40,11 @@ end
 -- We separate the strings based on the chars in `separators`.
 ---@param subject str
 ---@param delimiters? str Defaults to "%s", which splits by whitespace.
----@param keep_empty? bool `true` = call `split_keepempty` else `split_noempty`.
+---@param keepempty? bool `true` = use `split_keepempty`, else `split_noempty`.
 ---@nodiscard
-function string.split(subject, delimiters, keep_empty)
-    keep_empty = keep_empty or false
-    local split_fn = (keep_empty and string.split_keepempty) or string.split_noempty
+function string.split(subject, delimiters, keepempty)
+    keepempty = keepempty or false
+    local split_fn = (keepempty and string.split_keepempty) or string.split_noempty
     return split_fn(subject, delimiters or "%s")
 end
 

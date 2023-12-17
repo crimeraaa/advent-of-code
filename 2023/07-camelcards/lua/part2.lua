@@ -41,7 +41,7 @@ end
 ---@param chars str[] hand split into its individual chars for easier iteration.
 local function parse_hand(chars)
     -- Character lookup table, same queries but set each value reset to 0.
-    ---@type tbl<str, int> 
+    ---@type LookupTable
     local _CharToCount = table.copy(CAMELCARDS.CARD_STRENGTH, function(v) return 0 end)
     for _, char in ipairs(chars) do
         _CharToCount[char] = _CharToCount[char] + 1

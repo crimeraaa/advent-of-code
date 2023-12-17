@@ -37,6 +37,10 @@ end
 ---@field label NewLabel
 ---@field ranges NewMapRanges[] List of 1 or more src-dst data relationships.
 
+---@alias MapDatabase { [str]:NewMap } Lookup table.
+---This annotation system is cool! 
+---Please see: https://luals.github.io/wiki/annotations/#type"
+
 ---@param range NewRange
 function make_rangestr(range)
     return string.format("[%.0f...%.0f]", range.start, range.endpt)

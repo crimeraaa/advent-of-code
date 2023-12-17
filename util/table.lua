@@ -39,3 +39,20 @@ function table.reverse(source, dontcopy)
     end
     return _Target
 end
+
+-- Create a copy of `source` array that contains only the values that 
+-- successfully pass through the filter function.
+-- 
+-- Currently this only works properly on arrays.
+---@param source any[]
+---@param filter_fn fun(v:any):bool `true` = append to filtered table.
+function table.filter(source, filter_fn)
+    local filtered = {} ---@type any[]
+    for _, v in pairs(source) do
+        if filter_fn(v) then
+            -- Don't do filtered[k] = v, as you'll have holes in the array!
+            filtered[#filtered + 1] = v
+        end
+    end
+    return filtered
+end

@@ -23,7 +23,7 @@ end
 
 ---@param lines str[]
 local function make_maps_db(lines)
-    local db = {} ---@type tbl<str, NewMap> Hashtable that we can "query"
+    local db = {} ---@type MapDatabase Hashtable that we can "query"
 
     -- Hold string matches of current map's source and target category names.
     local label = {src="", dst=""} ---@type NewLabel
@@ -33,8 +33,7 @@ local function make_maps_db(lines)
     local ranges = {src="",dst="",length=""} 
 
     -- Keep a pointer outside of loop scope so we can poke at the current map.
-    ---@type NewMap
-    local handle 
+    local handle ---@type NewMap
 
     for _, line in ipairs(lines) do
         ---@type str?, str?
@@ -47,7 +46,6 @@ local function make_maps_db(lines)
         -- Main assumption: label and data don't exist on the same line!
         if label.src and label.dst then
             -- New category, so hash it!
-            ---@type NewMap
             db[label.src] = {
                 label = table.copy(label), -- copy by value, not pointer
                 ranges = {}
@@ -66,12 +64,12 @@ end
 
 -- Your starting `query` can beginning "seed" or maybe do some smart recursion.
 ---@param query str Used to query into `database`.
----@param database tbl<str, NewMap> All possible {thing}-to-{thing} mappings.
+---@param database MapDatabase All possible {thing}-to-{thing} mappings.
 ---@param seed NewRange Current seed range we're checking for.
 ---@param tab? int Index into the global `INDENT` table, can be 0.
 local function query_maps(query, database, seed, tab)
     tab = tab or 0
-    local handle = database[query] ---@type NewMap
+    local handle = database[query]
     local lowest = math.huge
     -- For now, dump mapping ranges
     while handle do
