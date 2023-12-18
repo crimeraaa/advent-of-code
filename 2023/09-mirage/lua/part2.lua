@@ -5,9 +5,7 @@ require "mirage"
 local function extrapolate_history(histories)
     local sum = 0
     -- Need go backwards from bottom to top history
-    local iter = array.ipairs.reverse
-    -- local iter = ipairs
-    for ii, history in iter(histories) do
+    for ii, history in array.ipairs.reverse(histories) do
         -- Fill in new first values of the previous sequence
         sum = history[1] - sum
         printf("list@%i: %i, %s\n", ii, sum, table.concat(history, ", "))
