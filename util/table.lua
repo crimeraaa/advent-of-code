@@ -2,25 +2,31 @@
 -- 
 -- By default, it just each value as is, no conversion at all. You can pass a 
 -- function `convert_fn` which takes an iterated value are returns a conversion.
----@param source tbl
+---@param source {}
 ---@param convert_fn? fun(v: any):any `tostring`, `tonumber` or custom function.
 function table.copy(source, convert_fn)
-    local _Target = {}
+    local target = {}
     for k, v in pairs(source) do
-        -- Invoke `copy_fn` only if exists, otherwise assign value as-is
-        _Target[k] = (convert_fn and convert_fn(v)) or v
+        target[k] = (convert_fn and convert_fn(v)) or v
     end
-    return _Target
+    return target
 end
 
--- Given a key-value pair table `source`, create a table based off of it where
--- the original keys are the new values and the original values are the keys.
+-- Given a key-value pair table `source`, create a table where the key-value
+-- relationship is reversed. e.g. passing the following table:
+-- 
+--      weekdays = {"M", "T", "W", "TH", "F"}
+-- 
+-- Would create a copy that looks like:
+-- 
+--      weekdays = {["M"]=1, ["T"]=2, ["W"]=3, ["TH"]=4, ["F"]=5}
+---@param source {}
 function table.invert(source)
-    local _Target = {}
+    local target = {}
     for k, v in pairs(source) do
-        _Target[v] = k
+        target[v] = k
     end
-    return _Target
+    return target
 end
 
 -- Create a copy of `source` array that contains only the values that 
@@ -29,15 +35,15 @@ end
 -- Currently this only works properly on arrays.
 ---@generic T
 ---@param _Array T[]
----@param filter_fn fun(v:T):bool `true` = append to filtered table.
-function table.filter(_Array, filter_fn)
-    ---@generic T
-    ---@type T[]
-    local filtered = {} 
+---@param filter_fn fun(v: T):bool return value `true` means append to filtered table.
+---@param convert_fn? fun(v: T):any Optional. By default we assign values as-is.
+---@return T[]
+function table.filter(_Array, filter_fn, convert_fn)
+    local filtered = {}
     for _, v in ipairs(_Array) do
         if filter_fn(v) then
             -- Don't do filtered[k] = v, as you'll have holes in the array!
-            filtered[#filtered + 1] = v
+            filtered[#filtered + 1] = (convert_fn and convert_fn(v)) or v
         end
     end
     return filtered

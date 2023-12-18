@@ -44,10 +44,16 @@ end
 ---@param fn fun(x: num, y: num):num
 ---@param ini? num Start value of result variable for list algorithm. Default: 1
 function math.fn_factory(fn, ini)
-    -- lists, e.g. using gcd function, are effectively evaluated as:
+    -- For lists, e.g. using the `math.gcd` as `fn`:
     -- 
     --      fn(16, 12, 8)
+    -- 
+    -- Is effectively evaluated as:
+    -- 
     --      fn(fn(16, 12), 4)
+    -- 
+    -- Which in turns evaluates to:
+    -- 
     --      fn(fn(fn(ini or 1, 16), 12), 4)
     ---@param x num
     ---@param y num
