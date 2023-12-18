@@ -122,7 +122,7 @@ function PipeMaze:get_searcharea()
     }
 end
 
--- TODO: Count connected verticals, connected horizontals
+-- Check if the callee can connect to the caller (not the other way around!)
 ---@param direction Directions `MazeSearch`/`MazeShape` keys.
 ---@param pipe TilesChars Current pipe character, see `MazePipe.shapes`.
 function PipeMaze:is_connection(direction, pipe)
@@ -137,29 +137,31 @@ function PipeMaze:is_connection(direction, pipe)
     return connects
 end
 
-PipeMaze.query_orders = {"north", "south", "east", "west"}
-local function invert_bool(v)
-    return not v
+function PipeMaze:get_query()
+    local search = self:get_searcharea() -- in reference to caller pipe
+    local query = MazeShape.new() -- in reference to callee pipe
+    -- Remember this part is from callee pipe's POV, it's really stupid to do it
+    -- this way but it works for all sample, complex and input it seems...
+    query.north = self:is_connection("south", search.north)
+    query.south = self:is_connection("north", search.south)
+    query.east  = self:is_connection("west", search.east)
+    query.west  = self:is_connection("east", search.west)
+    return query
 end
+
 -- Figure out the shape of the 'S' pipe based on its surroundings.
 -- 
 -- NOTE: Starting pipe will have exactly 2 pipes connected to it.
 -- 
--- Every pipe in the main loop connects to its 2 neighbors.
+-- Every pipe in the main loop connects exactly 2 neighbors.
 function PipeMaze:get_shape()
-    local search = self:get_searcharea()
-    local query = MazeShape.new()
-    for _, direction in ipairs(self.query_orders) do
-        query[direction] = self:is_connection(direction, search[direction])
-    end
-    -- Need to invert now to be in relation of caller's POV directions
-    query = table.copy(query, invert_bool, true)
+    local query = self:get_query()
 
     -- Linear search for shape that matches our criteria
     -- TODO: maybe could be more database-like?
     for key, shape in pairs(self.shapes) do
         if MazeShape.compare(query, shape) then
-            printf("Proably is %s\n", key)
+            printf("Probably is %s\n", key)
             return key
         end
     end
@@ -182,31 +184,31 @@ PipeMaze.shapes = {
     -- Connects to either left or right of caller.
     ['-'] = {
         north = false, south = false, 
-        east  = true,  west  = true
+        east  = true,  west  = true,
     }, 
     ---@type MazeShape 90-degree bend connecting north and east.
     -- Connects to either below caller or left of caller.
     ['L'] = {
-        north = false, south = true, 
-        east  = false, west  = true
+        north = true, south = false, 
+        east  = true, west  = false
     }, 
     ---@type MazeShape 90-degree bend connecting north and west.
     -- Connects to either below caller or right of caller.
     ['J'] = {
-        north = false, south = true, 
-        east  = true,  west  = false
+        north = true,  south = false,
+        east  = false, west  = true,
     }, 
     ---@type MazeShape 90-degree bend connecting south and west.
     -- Connects to either above caller or right of caller.
     ['7'] = {
-        north = true, south = false, 
-        east  = true, west  = false
+        north = false, south = true, 
+        east  = false, west  = true,
     }, 
     ---@type MazeShape 90-degree bend connecting south and east.
     -- Connects to either above caller or left of caller.
     ['F'] = {
-        north = true,  south = false,
-        east  = false, west = true
+        north = false, south = true,
+        east  = true,  west  = false,
     }, 
     ---@type MazeShape ground. there is no pipe in this tile.
     -- Does not connect to caller in any way because it's not a pipe.
@@ -227,6 +229,4 @@ PipeMaze.shapes = {
 ------------------------------ METATABLE DETAILS -------------------------------
 --------------------------------------------------------------------------------
 
-PipeMaze.mt.__index = function(tbl, key)
-    return PipeMaze[key]
-end
+PipeMaze.mt.__index = PipeMaze
