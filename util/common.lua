@@ -26,15 +26,18 @@ However, these defaults are overwritten when you set LUA_PATH yourself!
 
 -- Fully qualified path of caller's current working directory, not the script's.
 -- Ugly but works: https://stackoverflow.com/a/6036884
-CWD = os.getenv("PWD") or io.popen("cd", "r"):read("*l") ---@type str
+---@type str
+CWD = os.getenv("PWD") or io.popen("cd", "r"):read("*l") 
 
 -- The workspace's main directory. Note that it may not have the trailing slash!
-WORKSPACE_DIR = CWD:match("(.-advent%-of%-code)") ---@type str
+---@type str
+WORKSPACE_DIR = CWD:match("(.-advent%-of%-code)") 
 
 -- Taken from: https://stackoverflow.com/a/23535333
 function script_path()
-    local str = debug.getinfo(2, "S").source:sub(2)
-    return str:match("(.*[/\\])") or "./" ---@type str
+    ---@type str
+    local source = debug.getinfo(2, "S").source:sub(2)
+    return source:match("(.*[/\\])") or "./" 
  end
 
 -- Used to determine which slash direction to use, that's literally it.
