@@ -32,6 +32,26 @@ FALLBACK = PROJECT_DIR .. "sample.txt"
 ---@field east bool If this piece placed right of caller makes a connection.
 ---@field west bool If this piece placed left of caller makes a connection.
 
+MazeShape = {}
+function MazeShape.new()
+    ---@type MazeShape
+    return {
+        north = false, south = false, 
+        east  = false, west  = false
+    }
+end
+
+---@param left MazeShape
+---@param right MazeShape
+function MazeShape.compare(left, right)
+    for key in pairs(left) do
+        if left[key] ~= right[key] then
+            return false
+        end
+    end
+    return true
+end
+
 ---@class PipeMaze
 ---@field map str[][] Array of lines, which are in turn arrays of chars.
 ---@field piece MazeCoord Location of 'S' char in the maze.
@@ -114,9 +134,13 @@ function PipeMaze:is_connection(direction, pipe)
         printf("\tProbably connects %s", direction)
     end
     printf("\n")
-    return connects and direction
+    return connects
 end
 
+PipeMaze.query_orders = {"north", "south", "east", "west"}
+local function invert_bool(v)
+    return not v
+end
 -- Figure out the shape of the 'S' pipe based on its surroundings.
 -- 
 -- NOTE: Starting pipe will have exactly 2 pipes connected to it.
@@ -124,11 +148,22 @@ end
 -- Every pipe in the main loop connects to its 2 neighbors.
 function PipeMaze:get_shape()
     local search = self:get_searcharea()
-    local order = {"north", "south", "east", "west"}
-    for _, direction in ipairs(order) do
-        self:is_connection(direction, search[direction])
+    local query = MazeShape.new()
+    for _, direction in ipairs(self.query_orders) do
+        query[direction] = self:is_connection(direction, search[direction])
     end
-    return self
+    -- Need to invert now to be in relation of caller's POV directions
+    query = table.copy(query, invert_bool, true)
+
+    -- Linear search for shape that matches our criteria
+    -- TODO: maybe could be more database-like?
+    for key, shape in pairs(self.shapes) do
+        if MazeShape.compare(query, shape) then
+            printf("Proably is %s\n", key)
+            return key
+        end
+    end
+    return '.'
 end
 
 -- Possible pipe shapes for a tile and what directions leading to them are valid.

@@ -4,10 +4,16 @@
 -- function `convert_fn` which takes an iterated value are returns a conversion.
 ---@param source {}
 ---@param convert_fn? fun(v: any):any `tostring`, `tonumber` or custom function.
-function table.copy(source, convert_fn)
-    local target = {}
+---@param dontcopy? bool Pass `true` if you want to modify `source` directly.
+function table.copy(source, convert_fn, dontcopy)
+    local target = (dontcopy and source) or {}
     for k, v in pairs(source) do
-        target[k] = (convert_fn and convert_fn(v)) or v
+        -- Need explicit check as (fn and fn(v)) or v messes up w/ bools.
+        if convert_fn then
+            target[k] = convert_fn(v)
+        else
+            target[k] = v -- no conversion function specified so assign as-is.
+        end
     end
     return target
 end
