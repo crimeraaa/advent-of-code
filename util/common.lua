@@ -35,9 +35,8 @@ WORKSPACE_DIR = CWD:match("(.-advent%-of%-code)")
 
 -- Taken from: https://stackoverflow.com/a/23535333
 function script_path()
-    ---@type str
     local source = debug.getinfo(2, "S").source:sub(2)
-    return source:match("(.*[/\\])") or "./" 
+    return source:match("(.*[/\\])") or "./" ---@type str
  end
 
 -- Used to determine which slash direction to use, that's literally it.
