@@ -109,10 +109,12 @@ function PipeMaze:is_connection(direction, pipe)
     printf("%-6s %s", string.format("%s:", direction), pipe)
     -- (direction="north",pipe='|') should pass
     -- but (direction="south", pipe='J') shouldn't
-    if self.shapes[pipe][direction] then
+    local connects = self.shapes[pipe][direction]
+    if connects then
         printf("\tProbably connects %s", direction)
     end
     printf("\n")
+    return connects and direction
 end
 
 -- Figure out the shape of the 'S' pipe based on its surroundings.
@@ -130,74 +132,59 @@ function PipeMaze:get_shape()
 end
 
 -- Possible pipe shapes for a tile and what directions leading to them are valid.
+-- Note that our booleans for bending pipes are reversed.
 -- 
--- This distinction is important: table values are based on if the PIPE were to
+-- This is because the MazeShape fields are based on if the PIPE were to
 -- be placed in some direction in relation to the CALLER, not vice versa.
 PipeMaze.shapes = {
     ---@type MazeShape vertical pipe connecting north and south.
     -- Connects to either above or below caller.
     ['|'] = {
-        north = true, 
-        south = true, 
-        east = false, 
-        west = false
+        north = true,  south = true, 
+        east  = false, west  = false
     },
     ---@type MazeShape horizontal pipe connecting east and west.
     -- Connects to either left or right of caller.
     ['-'] = {
-        north = false, 
-        south = false, 
-        east = true, 
-        west = true
+        north = false, south = false, 
+        east  = true,  west  = true
     }, 
     ---@type MazeShape 90-degree bend connecting north and east.
     -- Connects to either below caller or left of caller.
     ['L'] = {
-        north = false, 
-        south = true, 
-        east = false, 
-        west = true
+        north = false, south = true, 
+        east  = false, west  = true
     }, 
     ---@type MazeShape 90-degree bend connecting north and west.
     -- Connects to either below caller or right of caller.
     ['J'] = {
-        north = true, 
-        south = false, 
-        east = true, 
-        west = false
+        north = false, south = true, 
+        east  = true,  west  = false
     }, 
     ---@type MazeShape 90-degree bend connecting south and west.
     -- Connects to either above caller or right of caller.
     ['7'] = {
-        north = true, 
-        south = false, 
-        east = true, 
-        west = false
+        north = true, south = false, 
+        east  = true, west  = false
     }, 
     ---@type MazeShape 90-degree bend connecting south and east.
     -- Connects to either above caller or left of caller.
     ['F'] = {
-        north = true, 
-        south = false, 
-        east = true, 
-        west = false
+        north = true,  south = false,
+        east  = false, west = true
     }, 
     ---@type MazeShape ground. there is no pipe in this tile.
     -- Does not connect to caller in any way because it's not a pipe.
     ['.'] = {
-        north = false, 
-        south = false, 
-        east = false, 
-        west = false
+        north = false, south = false, 
+        east  = false, west  = false
     }, 
     ---@type MazeShape starting position of the animal; there's a pipe here
     -- but your sketch doesn't show what shape the pipe has!
     -- Does not connect to caller in any way because it's not a pipe.
     ['S'] = {
-        north = false, 
-        south = false, 
-        east = false, 
-        west = false
+        north = false, south = false, 
+        east  = false, west  = false
     },
 }
 
