@@ -1,9 +1,4 @@
-require "util/common"
 require "util/math"
-require "util/stdio"
-require "util/string"
-require "util/table"
-require "util/prettyprint"
 
 -- This is a test to get the least common multiple of variable numbers.
 ---@param argc int

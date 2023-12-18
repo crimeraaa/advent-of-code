@@ -23,32 +23,18 @@ function table.invert(source)
     return _Target
 end
 
--- Given an array (or a table with an array portion), reverse the order of elements.
--- Note that, by default, this creates a copy of the table!
----@param source any[]
----@param dontcopy? bool `true` = modify `source` directly.
-function table.reverse(source, dontcopy)
-    -- If `dontcopy` is passed, is a reference/pointer to `source` itself.
-    local _Target = (dontcopy and source) or table.copy(source)
-    local i, ii = 1, #_Target
-    while (i < ii) do
-        -- like in Python, this compound assignment works as you want it to!
-        _Target[i], _Target[ii] = _Target[ii], _Target[i]
-        i = i + 1
-        ii = ii - 1
-    end
-    return _Target
-end
-
 -- Create a copy of `source` array that contains only the values that 
 -- successfully pass through the filter function.
 -- 
 -- Currently this only works properly on arrays.
----@param source any[]
----@param filter_fn fun(v:any):bool `true` = append to filtered table.
-function table.filter(source, filter_fn)
-    local filtered = {} ---@type any[]
-    for _, v in pairs(source) do
+---@generic T
+---@param _Array T[]
+---@param filter_fn fun(v:T):bool `true` = append to filtered table.
+function table.filter(_Array, filter_fn)
+    ---@generic T
+    ---@type T[]
+    local filtered = {} 
+    for _, v in ipairs(_Array) do
         if filter_fn(v) then
             -- Don't do filtered[k] = v, as you'll have holes in the array!
             filtered[#filtered + 1] = v

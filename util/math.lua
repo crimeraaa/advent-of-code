@@ -58,7 +58,7 @@ function math.fn_factory(fn, ini)
             return fn(x, y)
         end
         -- Previous result, ideally get first list value as is via algorithm
-        -- e.g. previous GCD in list be gcd(1, list[1])
+        -- e.g. first GCD in list be gcd(1, list[1])
         local result = ini or 1
         local list = {x, y, ...}
         for _, value in ipairs(list) do
@@ -80,7 +80,7 @@ math.gcd = math.fn_factory(function(x, y)
     return gcd
 end)
 
--- Least common multiple of a set of values.
+-- Least common multiple of 2 values/set of values. 
 math.lcm = math.fn_factory(function(x, y)
     -- LCM is just abs(x*y)/gcd(x,y), also works for x=0 and/or y=0
     return (x * y) / math.gcd(x, y)
