@@ -10,7 +10,7 @@ PROJECT_DIR = WORKSPACE_DIR .. convert_OSpath("/2023/10-pipemaze/")
 FALLBACK = PROJECT_DIR .. "sample.txt"
 
 ---@alias Directions "north"|"south"|"east"|"west"
----@alias TilesChars '|'|'-'|'L'|'J'|'7'|'F'|'.'|'S'
+---@alias TileChars '|'|'-'|'L'|'J'|'7'|'F'|'.'|'S'
 
 ---@class MazeCoord
 ---@field ln int Line number.
@@ -21,10 +21,10 @@ FALLBACK = PROJECT_DIR .. "sample.txt"
 ---@field col int How many columns in a line there are.
 
 ---@class MazeSearch
----@field north str Pipe above our current piece.
----@field south str Pipe below our current piece.
----@field east str Pipe right of our current piece.
----@field west str Pipe left of our current piece.
+---@field north TileChars Pipe above our current piece.
+---@field south TileChars Pipe below our current piece.
+---@field east TileChars Pipe right of our current piece.
+---@field west TileChars Pipe left of our current piece.
 
 ---@class MazeShape
 ---@field north bool If this piece placed above caller makes a connection.
@@ -123,30 +123,30 @@ function PipeMaze:get_searcharea()
 end
 
 -- Check if the callee can connect to the caller (not the other way around!)
----@param direction Directions `MazeSearch`/`MazeShape` keys.
----@param pipe TilesChars Current pipe character, see `MazePipe.shapes`.
-function PipeMaze:is_connection(direction, pipe)
-    printf("%-6s %s", string.format("%s:", direction), pipe)
+---@param direction Directions Where to check if `char` can connect.
+---@param char TileChars Kndex into `PipeMaze.shapes`.
+function PipeMaze:is_connection(direction, char)
     -- (direction="north",pipe='|') should pass
     -- but (direction="south", pipe='J') shouldn't
-    local connects = self.shapes[pipe][direction]
-    if connects then
-        printf("\tProbably connects %s", direction)
-    end
-    printf("\n")
-    return connects
+    return self.shapes[char][direction]
 end
 
-function PipeMaze:get_query()
-    local search = self:get_searcharea() -- in reference to caller pipe
-    local query = MazeShape.new() -- in reference to callee pipe
-    -- Remember this part is from callee pipe's POV, it's really stupid to do it
-    -- this way but it works for all sample, complex and input it seems...
-    query.north = self:is_connection("south", search.north)
-    query.south = self:is_connection("north", search.south)
-    query.east  = self:is_connection("west", search.east)
-    query.west  = self:is_connection("east", search.west)
-    return query
+-- Determine which of our immediate surroundings can be connected to us.
+function PipeMaze:get_connections()
+    -- in reference to caller pipe
+    local search = self:get_searcharea() 
+
+    -- Seems really stupid to do this way but it works...
+    -- 
+    -- What's happening here is: does the piece to the caller's north
+    -- allow for a connection to it (the piece's) south?
+    ---@type MazeShape
+    return {
+        north = self:is_connection("south", search.north),
+        south = self:is_connection("north", search.south),
+        east  = self:is_connection("west", search.east),
+        west  = self:is_connection("east", search.west),
+    }
 end
 
 -- Figure out the shape of the 'S' pipe based on its surroundings.
@@ -155,17 +155,34 @@ end
 -- 
 -- Every pipe in the main loop connects exactly 2 neighbors.
 function PipeMaze:get_shape()
-    local query = self:get_query()
+    local connections = self:get_connections()
 
     -- Linear search for shape that matches our criteria
     -- TODO: maybe could be more database-like?
     for key, shape in pairs(self.shapes) do
-        if MazeShape.compare(query, shape) then
-            printf("Probably is %s\n", key)
+        if MazeShape.compare(connections, shape) then
+            -- printf("Probably is %s\n", key)
             return key
         end
     end
     return '.'
+end
+
+-- Mainly meant for copies to replace the current 'S' character.
+-- 
+-- Will also be used by copies to replace the current piece with a number.
+function PipeMaze:update(char)
+    self.map[self.piece.ln][self.piece.col] = char
+    printf("'%s' (Ln %i, Col %i)\n", char, self.piece.ln, self.piece.col)
+
+    -- TODO: err... what do we do with this?
+    local connections = self:get_connections()
+    for _, direction in ipairs{"north", "west", "east", "south"} do
+        -- printf("%s: %s\n", direction, tostring(connections[direction]))
+        if connections[direction] then
+            printf("Try to go %s!\n", direction)
+        end
+    end
 end
 
 -- Possible pipe shapes for a tile and what directions leading to them are valid.
