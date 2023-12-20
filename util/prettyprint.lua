@@ -100,7 +100,8 @@ end
 
 -- Print an ordered table which is effectively an array.
 -- If index 0 exists, there is a special case to print it as well.
----@param array any[]
+---@generic T
+---@param array T[]
 ---@param name str
 ---@param tabs? int
 function print_array(array, name, tabs)

@@ -19,6 +19,19 @@ array.__iter = {}
 ------------------------------ GENERIC FUNCTIONS -------------------------------
 --------------------------------------------------------------------------------
 
+-- Quickly create a new 1D array of the given length with initialized values.
+---@generic T
+---@param length int How many elements in the array.
+---@param value T Initializer value.
+---@return T[]
+function array.new(length, value)
+    local target = {} 
+    for i = 1, length do
+        target[i] = value
+    end
+    return target
+end
+
 -- Given an array (or table w/ array portion), reverse the order of elements.
 -- Note that, by default, this creates a copy of the table!
 ---@generic T
