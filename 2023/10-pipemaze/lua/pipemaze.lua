@@ -11,9 +11,11 @@ FALLBACK = PROJECT_DIR .. "sample.txt"
 
 ---@class PipeMaze
 ---@field map PipeChars[][] Tile data or distance (in tiles) to start.
+---@field steps int Highest number of steps.
 ---@field visited bool[][] Keep track of which tiles were previously visited.
 ---@field start MapInfo Starting piece's coordinates. (Mostly) read-only.
 ---@field piece MapInfo Current piece's coordinates, Is mutable/modifiable.
+---@field direction DirectionStrs Which direction we want to go to currently.
 ---@field dimensions MapInfo How big the map is, assumes it's a rectangle.
 PipeMaze = {}
 
@@ -28,6 +30,8 @@ PipeMaze.directions = require("pipedatabase").directions
 -- List of piecement movement functions, query via a direction string.
 PipeMaze.move_piece_fns = require("pipedatabase").move_piece_fns
 
+PipeMaze.move_test_fns = require("pipedatabase").move_test_fns
+
 ---------------------------- PIPEMAZE IMPLEMENTATION ---------------------------
 
 function PipeMaze.new(lines)
@@ -35,6 +39,8 @@ function PipeMaze.new(lines)
     ---@type PipeMaze
     local inst = {
         map = {}, 
+        steps = 0,
+        direction = "north",
         visited = {}, 
         start = {ln=0, col=0},
         piece = {ln=0, col=0},
@@ -56,6 +62,7 @@ end
 function PipeMaze:set_first_tile()
     local ln, col = self.start.ln, self.start.col
     self.map[ln][col] = self:get_shape(ln, col)
+    self.direction = self:get_possible_move()
     return self
 end
 
@@ -85,6 +92,7 @@ function PipeMaze:get_neighbors(ln, col)
         grid[#grid+1] = line
     end
     -- Ignore the other directions (e.g. northeast, southwest).
+    -- TODO: how to deal with current piece on corners and/or edges?
     ---@type NeighborSet
     return {
         north = grid[1][2],
@@ -111,26 +119,43 @@ end
 
 -- First possible move for this current tile, in no particular order!
 function PipeMaze:get_possible_move()
+    
     local ln, col = self.piece.ln, self.piece.col
     local char = self.map[ln][col]
+    -- TODO: How to avoid crashing when the start is reached again?
+    if self:is_starting_tile() and self.visited[ln][col] then
+        return nil
+    end
     -- Only need main key, no need for the complement/opposite directions
     for direction in pairs(self.directions) do
-        if self.shapes[char][direction] == true then
+        if self.shapes[char][direction] and self:is_valid_move(direction) then
             return direction
         end
     end
+    -- TODO: what about very last tile (all previous tiles visited already)?
+    return nil
 end
 
 function PipeMaze:update_tile()
     local ln, col = self.piece.ln, self.piece.col
     local distance = self:get_distance(ln, col)
+    if distance > self.steps then
+        self.steps = distance
+    end
+    -- Set BEFORE map is updated, else we get bad values!
+    self.direction = self:get_possible_move()
     self.map[ln][col] = distance
     self.visited[ln][col] = true
     return self
 end
 
-function PipeMaze:move_piece(direction) ---@param direction DirectionStrs
-    local move_fn = self.move_piece_fns[direction]
+function PipeMaze:move_piece()
+    -- Very last tile will have no valid moves, so explicitly reset ourselves
+    if self.direction == nil then
+        self.piece.ln, self.piece.col = self.start.ln, self.start.col
+       return self 
+    end
+    local move_fn = self.move_piece_fns[self.direction]
     return move_fn(self)
 end
 
@@ -161,6 +186,15 @@ function PipeMaze:get_distance(ln, col)
     return math.abs(self.start.ln - ln + self.start.col - col) ---@type int
 end
 
+function PipeMaze:is_valid_move(direction)
+    local test_fn = self.move_test_fns[direction]
+    return test_fn(self)
+end
+
+function PipeMaze:is_starting_tile()
+    return self.piece.ln == self.start.ln and self.piece.col == self.start.col
+end
+
 ------------------------------ PIPEMAZE METATABLE ------------------------------
 
 function PipeMaze:tostring()
@@ -168,9 +202,10 @@ function PipeMaze:tostring()
     local char = self.map[ln][col]
     local distance = self:get_distance(ln, col)
     local output = {
-        string.format("{CURRENT}:  '%s' (Ln %i, Col %i)", char, ln, col),
-        string.format("{VISITED}:  %s", tostring(self.visited[ln][col])),
+        string.format("{CURRENT}: '%s' (Ln %i, Col %i)", char, ln, col),
         string.format("{DISTANCE}: %i units from start.", distance),
+        string.format("{MAXSTEPS}: %i", self.steps),
+        string.format("{PREVMOVE}: %s", self.direction or "none"),
     }
     for _, line in ipairs(self.map) do
         output[#output + 1] = table.concat(line, " ")

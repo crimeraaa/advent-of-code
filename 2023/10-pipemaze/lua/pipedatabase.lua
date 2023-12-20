@@ -99,4 +99,22 @@ database.move_piece_fns = {
     south = make_move_fn("ln", 1), -- to go downwards, increment y-axis
 }
 
+---@param axis "ln"|"col"
+---@param offset -1|1
+local function make_test_fn(axis, offset)
+    local visited_already = visited_lookup[axis]
+    return function(self) ---@param self PipeMaze
+        local test = self.piece[axis] + offset
+        local in_range = self:is_in_bounds(test, "ln")
+        return in_range and not visited_already(self, test)
+    end
+end
+
+database.move_test_fns = {
+    north = make_test_fn("ln", -1), -- to go upwards, decrement y-axis
+    west  = make_test_fn("col", -1),
+    east  = make_test_fn("col", 1),
+    south = make_test_fn("ln", 1), -- to go downwards, increment y-axis
+}
+
 return database
