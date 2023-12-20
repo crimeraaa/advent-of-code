@@ -9,8 +9,12 @@ require "util/prettyprint"
 PROJECT_DIR = WORKSPACE_DIR .. convert_OSpath("/2023/10-pipemaze/")
 FALLBACK = PROJECT_DIR .. "sample.txt"
 
----@alias Directions "north"|"south"|"east"|"west"
+---@alias DirectionStrings "north"|"south"|"east"|"west"
 ---@alias TileChars '|'|'-'|'L'|'J'|'7'|'F'|'.'|'S'
+
+---@class DirectionSet
+---@field direction DirectionStrings The primary direction concerned.
+---@field opposite DirectionStrings Opposite/complement of primary direction.
 
 ---@class MazeCoord
 ---@field ln int Line number.
@@ -94,38 +98,46 @@ function PipeMaze.new(lines)
     }, PipeMaze.mt)
 end
 
+function PipeMaze:set_startingtile()
+    local ln, col = self.piece.ln, self.piece.col
+    self.map[ln][col] = self:get_shape()
+    return self
+end
+
 -- Get the 3x3 grid surrounding `self.piece` with that at the center.
 -- 
 -- Potential edge cases: `inst.piece` is at the corner or edges of the map.
-function PipeMaze:get_searcharea()
+function PipeMaze:get_searcharea(ln, col)
     local grid = {} ---@type str[][]
     for i = -1, 1 do
         local handle = {} ---@type str[]
         for ii = -1, 1 do
-            local ln = self.piece.ln + i
-            local col = self.piece.col + ii
+            local offset_ln = ln + i
+            local offset_col = col + ii
             -- Avoid indexing into out of bounds indexes
-            if self:is_valid_query(ln, col) then
-                handle[#handle + 1] = self.map[ln][col]
+            if self:is_valid_query(offset_ln, offset_col) then
+                handle[#handle + 1] = self.map[offset_ln][offset_col]
             end
         end
         grid[#grid + 1] = handle
     end
     -- Only need to immediately worry about pipes to N, S, E or W, not combined.
-    -- grid is of form: str_array[ln][col]
+    -- grid is of form: array[ln: int][col: int]: string
     ---@type MazeSearch
     return {
         north = grid[1][2],
-        west = grid[2][1],
-        east = grid[2][3],
+        west  = grid[2][1],
+        east  = grid[2][3],
         south = grid[3][2]
     }
 end
 
 -- Determine which of our immediate surroundings can be connected to us.
-function PipeMaze:get_connections()
+---@param ln int
+---@param col int
+function PipeMaze:get_connections(ln, col)
     -- in reference to caller pipe
-    local surroundings = self:get_searcharea() 
+    local surroundings = self:get_searcharea(ln, col) 
 
     -- Check if the callee can connect to the caller (not the other way around!)
     -- Seems really stupid to do this way but it works...
@@ -141,17 +153,33 @@ function PipeMaze:get_connections()
     }
 end
 
+-- Although we receive a copy, we primarily use `maze` (or `self`).
+-- This is because `copy` will have messed up tiles.
+---@param copy PipeMaze
+function PipeMaze:print_moves(copy)
+    local ln, col = copy.piece.ln, copy.piece.col
+    local char = self.map[ln][col]
+    printf("Movements of Ln %i, Col %i ('%s'):\n", ln, col, char)
+    -- TODO: Determine if the given offset is a number or not, somehow
+    -- Maybe instead of number, check if it was visited previously?
+    for _, set in ipairs(self.directions) do
+        if self.shapes[char][set.direction] then
+            printf("%s, ", set.direction)
+        end
+    end
+end
+
 -- Figure out the shape of the 'S' pipe based on its surroundings.
 -- 
 -- NOTE: Starting pipe will have exactly 2 pipes connected to it.
 -- 
 -- Every pipe in the main loop connects exactly 2 neighbors.
 function PipeMaze:get_shape()
-    local connected = self:get_connections()
+    local connected = self:get_connections(self.piece.ln, self.piece.col)
 
     -- Linear search for shape that matches our criteria
     -- TODO: maybe could be more database-like?
-    for key, shape in pairs(PipeMaze.shapes) do
+    for key, shape in pairs(self.shapes) do
         if MazeShape.compare(connected, shape) then
             return key
         end
@@ -161,20 +189,31 @@ end
 
 -- Replace the copy's current tile with the given character.
 ---@param copy PipeMaze
----@param char? str
-function PipeMaze:update(copy, char)
-    local distance = copy:get_distance_to_start()
-    copy.map[copy.piece.ln][copy.piece.col] = char or tostring(distance)
-    local connected = self:get_connections()
-    for _, direction in ipairs{"north", "west", "east", "south"} do
-        if connected[direction] then
-            return direction
+---@param char? str Default: copy's distance (in tiles) to the starting point.
+function PipeMaze:set_tile(copy, char)
+    local ln, col = copy.piece.ln, copy.piece.col
+    local distance = copy:get_distance_to_start(ln, col)
+    copy.map[ln][col] = char or tostring(distance)
+    return self
+end
+
+---@param copy PipeMaze
+function PipeMaze:get_move(copy)
+    local ln, col = copy.piece.ln, copy.piece.col
+
+    -- Can't use copy as it'll have invalid tile names, e.g. '1', '7', etc.
+    local connected = self:get_connections(ln, col)
+
+    for _, set in ipairs(self.directions) do
+        -- TODO: Determine if the given offset is a number or not, somehow
+        if connected[set.direction] then
+            return set.direction
         end
     end
 end
 
 ---@param copy PipeMaze
----@param direction Directions
+---@param direction DirectionStrings
 function PipeMaze:move_piece(copy, direction)
     local move_fn = self.move_fns[direction]
     return move_fn(copy)
@@ -183,6 +222,13 @@ end
 --------------------------------------------------------------------------------
 ---------------------------- PIPEMAZE LOOKUP TABLES ----------------------------
 --------------------------------------------------------------------------------
+
+PipeMaze.directions = {
+    [1] = {direction = "north", opposite = "south"}, ---@type DirectionSet
+    [2] = {direction = "west",  opposite = "east"},  ---@type DirectionSet
+    [3] = {direction = "east",  opposite = "west"},  ---@type DirectionSet
+    [4] = {direction = "south", opposite = "north"}, ---@type DirectionSet
+}
 
 ---@param axis "ln"|"col" "ln": y-axis/line numbers, "col": x-axis/columns.
 ---@param offset -1|1 Offset of the chosen axis.
@@ -199,10 +245,10 @@ local function move_fn_factory(axis, offset)
 end
 
 PipeMaze.move_fns = {
-    north = move_fn_factory("ln", -1), -- going upwards is negative y-axis
-    south = move_fn_factory("ln", 1),  -- going downwards is positive y-axis
-    east = move_fn_factory("col", 1), -- right is positive x-axis
-    west = move_fn_factory("col", -1), -- left is negative x-axis
+    north = move_fn_factory("ln",  -1), -- going upwards is negative y-axis
+    south = move_fn_factory("ln",  1),  -- going downwards is positive y-axis
+    east  = move_fn_factory("col", 1), -- right is positive x-axis
+    west  = move_fn_factory("col", -1), -- left is negative x-axis
 }
 
 -- Possible pipe shapes for a tile and what directions leading to them are valid.
@@ -270,7 +316,7 @@ PipeMaze.shapes = {
 function PipeMaze:tostring()
     local ln, col = self.piece.ln, self.piece.col
     local char = self.map[ln][col]
-    local distance = self:get_distance_to_start()
+    local distance = self:get_distance_to_start(ln, col)
     ---@type str[]
     local output = {
         string.format("{CURRENT}: '%s' (Ln %i, Col %i)", char, ln, col),
@@ -295,8 +341,9 @@ function PipeMaze:is_valid_query(ln, col)
     return self:is_in_range(ln, "ln") and self:is_in_range(col, "col")
 end
 
-function PipeMaze:get_distance_to_start()
-    local ln, col = self.piece.ln, self.piece.col
+---@param ln int
+---@param col int
+function PipeMaze:get_distance_to_start(ln, col)
     return math.abs((self.start.ln - ln) - (self.start.col - col))
 end
 
