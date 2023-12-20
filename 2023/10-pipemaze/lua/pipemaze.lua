@@ -166,13 +166,14 @@ end
 -- TODO: move `inst.piece`... somehow. There are always 2 possible pieces.
 -- TODO: Maybe first get the distance to the starting piece?
 -- TODO: Need to keep maze and copy separate.
+---@param copy PipeMaze
 ---@param char? str
 function PipeMaze:update(copy, char)
     local distance = copy:get_distance_to_start(copy.piece.ln, copy.piece.col)
     printf("Distance from start: %i\n", distance)
     copy.map[copy.piece.ln][copy.piece.col] = char or tostring(distance)
     local moves = {} ---@type str[]
-    local connected = PipeMaze.get_connections(self)
+    local connected = self:get_connections()
     for _, direction in ipairs{"north", "west", "east", "south"} do
         if connected[direction] then
             moves[#moves + 1] = direction
@@ -181,9 +182,37 @@ function PipeMaze:update(copy, char)
     return moves
 end
 
+---@param copy PipeMaze
+---@param direction Directions
+function PipeMaze:move_piece(copy, direction)
+    -- TODO: Update copy's current piece location first.
+    copy.move_fns[direction](copy)
+    return copy
+end
+
 --------------------------------------------------------------------------------
 ---------------------------- PIPEMAZE LOOKUP TABLES ----------------------------
 --------------------------------------------------------------------------------
+
+---@param offset -1|1 Offset of the chosen axis.
+---@param dimension "ln"|"col" Which axis to move at: ln = y-axis, col = x-axis.
+local function move_fn_factory(dimension, offset)
+    -- Try to move your piece 1 unit in the key's name's direction.
+    ---@param self PipeMaze
+    return function(self)
+        local updated = self.piece[dimension] + offset
+        local bounded = self:is_in_range(updated, dimension)
+        -- If out of range, clip it to the current value
+        self.piece[dimension] = (bounded and updated) or self.piece[dimension]
+    end
+end
+
+PipeMaze.move_fns = {
+    north = move_fn_factory("ln", -1), -- going upwards is negative y-axis
+    south = move_fn_factory("ln", 1),  -- going downwards is positive y-axis
+    east = move_fn_factory("col", 1), -- right is positive x-axis
+    west = move_fn_factory("col", -1), -- left is negative x-axis
+}
 
 -- Possible pipe shapes for a tile and what directions leading to them are valid.
 -- Note that our booleans for bending pipes are reversed.
@@ -252,7 +281,7 @@ function PipeMaze:tostring()
     local char = self.map[ln][col]
     ---@type str[]
     local output = {
-        [1] = string.format("Current: '%s' @(Ln %i, Col %i)", char, ln, col),
+        [1] = string.format("{CURRENT}: '%s' (Ln %i, Col %i)", char, ln, col),
     }
     for _, line in ipairs(self.map) do
         output[#output+1] = table.concat(line, " ")
