@@ -54,13 +54,20 @@ end
 
 ---@class PipeMaze
 ---@field map str[][] Array of lines, which are in turn arrays of chars.
----@field piece MazeCoord Location of 'S' char in the maze.
+---@field piece MazeCoord Location of the current character in the maze.
+---@field start MazeCoord Location of the starting point so we know where to stop.
 ---@field dimensions MazeSize So we don't have to use '#' operator a whole lot.
 PipeMaze = {}
+
+-- Metatable. Do not modify unless you know exactly what you're doing!
 PipeMaze.mt = {}
 
+--------------------------------------------------------------------------------
+--------------------- PIPEMAZE PRIMARY USER-SIDED METHODS ----------------------
+--------------------------------------------------------------------------------
+
 ---@param lines str[]
-function PipeMaze:new(lines)
+function PipeMaze.new(lines)
     -- Upvalue line counter so callback function can correctly set `piece`.
     local line_number = 0
 
@@ -77,30 +84,23 @@ function PipeMaze:new(lines)
         return string.toarray(v) 
     end)
 
+    -- Both the current and starting point are the same piece at first.
     ---@type PipeMaze
-    local inst = {
+    return setmetatable({
         piece = piece,
+        start = table.copy(piece), -- Copy by value as piece will be updated.
         map = map,
         dimensions = {ln = #lines, col = #lines[1]},
-    }
-    return setmetatable(inst, PipeMaze.mt)
-end
-
-function PipeMaze:is_valid_query(ln, col)
-    local valid_ln = (ln >= 1 and ln <= self.dimensions.ln)
-    local valid_col = (col >= 1 and col <= self.dimensions.col)
-    return valid_ln and valid_col
+    }, PipeMaze.mt)
 end
 
 -- Get the 3x3 grid surrounding `self.piece` with that at the center.
 -- 
--- Potential edge cases: `self.piece` is at the corner or edges of the map.
+-- Potential edge cases: `inst.piece` is at the corner or edges of the map.
 function PipeMaze:get_searcharea()
-    ---@type str[][]
-    local grid = {}
+    local grid = {} ---@type str[][]
     for i = -1, 1 do
-        ---@type str[]
-        local handle = {}
+        local handle = {} ---@type str[]
         for ii = -1, 1 do
             local ln = self.piece.ln + i
             local col = self.piece.col + ii
@@ -122,30 +122,22 @@ function PipeMaze:get_searcharea()
     }
 end
 
--- Check if the callee can connect to the caller (not the other way around!)
----@param direction Directions Where to check if `char` can connect.
----@param char TileChars Kndex into `PipeMaze.shapes`.
-function PipeMaze:is_connection(direction, char)
-    -- (direction="north",pipe='|') should pass
-    -- but (direction="south", pipe='J') shouldn't
-    return self.shapes[char][direction]
-end
-
 -- Determine which of our immediate surroundings can be connected to us.
 function PipeMaze:get_connections()
     -- in reference to caller pipe
-    local search = self:get_searcharea() 
+    local surroundings = self:get_searcharea() 
 
+    -- Check if the callee can connect to the caller (not the other way around!)
     -- Seems really stupid to do this way but it works...
     -- 
     -- What's happening here is: does the piece to the caller's north
-    -- allow for a connection to it (the piece's) south?
+    -- allow for a connection to it (the piece's) south? etc. etc.
     ---@type MazeShape
     return {
-        north = self:is_connection("south", search.north),
-        south = self:is_connection("north", search.south),
-        east  = self:is_connection("west", search.east),
-        west  = self:is_connection("east", search.west),
+        north = self.shapes[surroundings.north]["south"],
+        south = self.shapes[surroundings.south]["north"],
+        east  = self.shapes[surroundings.east]["west"],
+        west  = self.shapes[surroundings.west]["east"],
     }
 end
 
@@ -155,13 +147,12 @@ end
 -- 
 -- Every pipe in the main loop connects exactly 2 neighbors.
 function PipeMaze:get_shape()
-    local connections = self:get_connections()
+    local connected = self:get_connections()
 
     -- Linear search for shape that matches our criteria
     -- TODO: maybe could be more database-like?
-    for key, shape in pairs(self.shapes) do
-        if MazeShape.compare(connections, shape) then
-            -- printf("Probably is %s\n", key)
+    for key, shape in pairs(PipeMaze.shapes) do
+        if MazeShape.compare(connected, shape) then
             return key
         end
     end
@@ -171,19 +162,28 @@ end
 -- Mainly meant for copies to replace the current 'S' character.
 -- 
 -- Will also be used by copies to replace the current piece with a number.
-function PipeMaze:update(char)
-    self.map[self.piece.ln][self.piece.col] = char
-    printf("'%s' (Ln %i, Col %i)\n", char, self.piece.ln, self.piece.col)
-
-    -- TODO: err... what do we do with this?
-    local connections = self:get_connections()
+-- 
+-- TODO: move `inst.piece`... somehow. There are always 2 possible pieces.
+-- TODO: Maybe first get the distance to the starting piece?
+-- TODO: Need to keep maze and copy separate.
+---@param char? str
+function PipeMaze:update(copy, char)
+    local distance = copy:get_distance_to_start(copy.piece.ln, copy.piece.col)
+    printf("Distance from start: %i\n", distance)
+    copy.map[copy.piece.ln][copy.piece.col] = char or tostring(distance)
+    local moves = {} ---@type str[]
+    local connected = PipeMaze.get_connections(self)
     for _, direction in ipairs{"north", "west", "east", "south"} do
-        -- printf("%s: %s\n", direction, tostring(connections[direction]))
-        if connections[direction] then
-            printf("Try to go %s!\n", direction)
+        if connected[direction] then
+            moves[#moves + 1] = direction
         end
     end
+    return moves
 end
+
+--------------------------------------------------------------------------------
+---------------------------- PIPEMAZE LOOKUP TABLES ----------------------------
+--------------------------------------------------------------------------------
 
 -- Possible pipe shapes for a tile and what directions leading to them are valid.
 -- Note that our booleans for bending pipes are reversed.
@@ -243,7 +243,44 @@ PipeMaze.shapes = {
 }
 
 --------------------------------------------------------------------------------
------------------------------- METATABLE DETAILS -------------------------------
+--------------------------- PIPEMAZE HELPER METHODS ----------------------------
+--------------------------------------------------------------------------------
+
+-- Convert your current map to a giant string, mainly for debug purposes.
+function PipeMaze:tostring()
+    local ln, col = self.piece.ln, self.piece.col
+    local char = self.map[ln][col]
+    ---@type str[]
+    local output = {
+        [1] = string.format("Current: '%s' @(Ln %i, Col %i)", char, ln, col),
+    }
+    for _, line in ipairs(self.map) do
+        output[#output+1] = table.concat(line, " ")
+    end
+    return table.concat(output, "\n")
+end
+
+---@param index int Received value corresponding to a dimension to query.
+---@param limit "ln"|"col" Key to index into `inst.dimensions`.
+function PipeMaze:is_in_range(index, limit)
+    return index >= 1 and index <= self.dimensions[limit]
+end
+
+---@param ln int
+---@param col int
+function PipeMaze:is_valid_query(ln, col)
+    return self:is_in_range(ln, "ln") and self:is_in_range(col, "col")
+end
+
+---@param ln int
+---@param col int
+function PipeMaze:get_distance_to_start(ln, col)
+    return math.abs((self.start.ln - ln) - (self.start.col - col))
+end
+
+--------------------------------------------------------------------------------
+------------------------------ PIPEMAZE METATABLE ------------------------------
 --------------------------------------------------------------------------------
 
 PipeMaze.mt.__index = PipeMaze
+PipeMaze.mt.__tostring = PipeMaze.tostring

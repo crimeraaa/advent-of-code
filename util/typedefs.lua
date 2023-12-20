@@ -1,3 +1,5 @@
+---@meta
+
 ---@alias int integer
 ---@alias num number Or maybe we should use float? flt?
 ---@alias str string
@@ -8,3 +10,5 @@
 ---@class Array<T> : { [int]:T }
 -- Think of using this like a C++ template.
 -- For samples, see: https://luals.github.io/wiki/annotations/#generic
+
+---@class Dictionary<T>: { [str]: T }

@@ -4,9 +4,9 @@
 -- function `convert_fn` which takes an iterated value are returns a conversion.
 ---@param source {}
 ---@param convert_fn? fun(v: any):any `tostring`, `tonumber` or custom function.
----@param dontcopy? bool Pass `true` if you want to modify `source` directly.
-function table.copy(source, convert_fn, dontcopy)
-    local target = (dontcopy and source) or {}
+---@param nocopy? bool Pass `true` if you want to modify `source` directly.
+function table.copy(source, convert_fn, nocopy)
+    local target = (nocopy and source) or {}
     for k, v in pairs(source) do
         -- Need explicit check as (fn and fn(v)) or v messes up w/ bools.
         if convert_fn then
@@ -49,7 +49,12 @@ function table.filter(_Array, filter_fn, convert_fn)
     for _, v in ipairs(_Array) do
         if filter_fn(v) then
             -- Don't do filtered[k] = v, as you'll have holes in the array!
-            filtered[#filtered + 1] = (convert_fn and convert_fn(v)) or v
+            -- Also don't do `fn and fn(v) or v` as it messes w/ bools.
+            if convert_fn then
+                filtered[#filtered + 1] = convert_fn(v)
+            else
+                filtered[#filtered + 1] = v
+            end
         end
     end
     return filtered
