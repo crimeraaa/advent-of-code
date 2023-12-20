@@ -26,9 +26,7 @@ PipeMaze.shapes = require("pipedatabase").shapes
 PipeMaze.directions = require("pipedatabase").directions
 
 -- List of piecement movement functions, query via a direction string.
-PipeMaze.move_to = require("pipedatabase").move_to
-
-PipeMaze.test_offset = require("pipedatabase").test_offset
+PipeMaze.move_piece_fns = require("pipedatabase").move_piece_fns
 
 ---------------------------- PIPEMAZE IMPLEMENTATION ---------------------------
 
@@ -132,12 +130,8 @@ function PipeMaze:update_tile()
 end
 
 function PipeMaze:move_piece(direction) ---@param direction DirectionStrs
-    local move_fn = self.move_to[direction]
-    local test_fn = self.test_offset[direction]
-    if test_fn(self) then
-        return move_fn(self)
-    end
-    return self
+    local move_fn = self.move_piece_fns[direction]
+    return move_fn(self)
 end
 
 

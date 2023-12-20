@@ -7,7 +7,6 @@ local function main(argc, argv)
     local maze = PipeMaze.new(lines):set_first_tile()
     print(maze)
     local move = maze:get_possible_move()
-    printf("Try to move to the %s!\n", move)
     print(maze:update_tile():move_piece(move))
     return 0
 end
