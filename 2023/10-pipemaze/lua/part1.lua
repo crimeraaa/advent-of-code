@@ -10,18 +10,19 @@ local function main(argc, argv)
     -- hold our step counts data, where tiles will be replaced with numbers
     local copy = PipeMaze.new(lines) 
 
-    -- TODO: Find connections to current location, then recurse until we reach
-    -- the starting point again?
-    -- Maybe need a copy of the maze to keep track of distances from start.
-    local moves = maze:update(copy, maze:get_shape())
+    local move = maze:update(copy, maze:get_shape())
     printf("Maze:\n%s\n\n", tostring(maze))
     printf("Copy:\n%s\n\n", tostring(copy))
-    for _, move in ipairs(moves) do
-        maze:update(copy)
-        printf("Copy:\n{TO MOVE}: %s.\n%s\n\n", move, tostring(copy))
-        maze:update(maze:move_piece(copy, move))
-        break -- do this so we can first focus on only 1 move
-    end
+
+    --? Need this so 'F' in `copy` is replaced with '0'.
+    maze:update(copy) 
+    --? Do this to confirm we actually set the above properly.
+    printf("Copy:\n{TO MOVE}: %s.\n%s\n\n", move, tostring(copy))
+
+    -- TODO: Given one move, keep going? Or perhaps just move in one direction?
+    -- Since it all loops back anyway this should be fine?
+    maze:update(maze:move_piece(copy, move))
+    printf("Copy:\n{TO MOVE}: %s.\n%s\n\n", move, tostring(copy))
     return 0
 end
 

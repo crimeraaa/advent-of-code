@@ -159,51 +159,42 @@ function PipeMaze:get_shape()
     return '.'
 end
 
--- Mainly meant for copies to replace the current 'S' character.
--- 
--- Will also be used by copies to replace the current piece with a number.
--- 
--- TODO: move `inst.piece`... somehow. There are always 2 possible pieces.
--- TODO: Maybe first get the distance to the starting piece?
--- TODO: Need to keep maze and copy separate.
+-- Replace the copy's current tile with the given character.
 ---@param copy PipeMaze
 ---@param char? str
 function PipeMaze:update(copy, char)
-    local distance = copy:get_distance_to_start(copy.piece.ln, copy.piece.col)
-    printf("Distance from start: %i\n", distance)
+    local distance = copy:get_distance_to_start()
     copy.map[copy.piece.ln][copy.piece.col] = char or tostring(distance)
-    local moves = {} ---@type str[]
     local connected = self:get_connections()
     for _, direction in ipairs{"north", "west", "east", "south"} do
         if connected[direction] then
-            moves[#moves + 1] = direction
+            return direction
         end
     end
-    return moves
 end
 
 ---@param copy PipeMaze
 ---@param direction Directions
 function PipeMaze:move_piece(copy, direction)
-    -- TODO: Update copy's current piece location first.
-    copy.move_fns[direction](copy)
-    return copy
+    local move_fn = self.move_fns[direction]
+    return move_fn(copy)
 end
 
 --------------------------------------------------------------------------------
 ---------------------------- PIPEMAZE LOOKUP TABLES ----------------------------
 --------------------------------------------------------------------------------
 
+---@param axis "ln"|"col" "ln": y-axis/line numbers, "col": x-axis/columns.
 ---@param offset -1|1 Offset of the chosen axis.
----@param dimension "ln"|"col" Which axis to move at: ln = y-axis, col = x-axis.
-local function move_fn_factory(dimension, offset)
+local function move_fn_factory(axis, offset)
     -- Try to move your piece 1 unit in the key's name's direction.
     ---@param self PipeMaze
     return function(self)
-        local updated = self.piece[dimension] + offset
-        local bounded = self:is_in_range(updated, dimension)
+        local updated = self.piece[axis] + offset
+        local bounded = self:is_in_range(updated, axis)
         -- If out of range, clip it to the current value
-        self.piece[dimension] = (bounded and updated) or self.piece[dimension]
+        self.piece[axis] = (bounded and updated) or self.piece[axis]
+        return self
     end
 end
 
@@ -279,9 +270,12 @@ PipeMaze.shapes = {
 function PipeMaze:tostring()
     local ln, col = self.piece.ln, self.piece.col
     local char = self.map[ln][col]
+    local distance = self:get_distance_to_start()
     ---@type str[]
     local output = {
-        [1] = string.format("{CURRENT}: '%s' (Ln %i, Col %i)", char, ln, col),
+        string.format("{CURRENT}: '%s' (Ln %i, Col %i)", char, ln, col),
+        string.format("{OFFSETS}: [%i] tiles from starting point.", distance),
+        string.format("{STARTPT}: [%s]", tostring(self:is_at_start()))
     }
     for _, line in ipairs(self.map) do
         output[#output+1] = table.concat(line, " ")
@@ -290,9 +284,9 @@ function PipeMaze:tostring()
 end
 
 ---@param index int Received value corresponding to a dimension to query.
----@param limit "ln"|"col" Key to index into `inst.dimensions`.
-function PipeMaze:is_in_range(index, limit)
-    return index >= 1 and index <= self.dimensions[limit]
+---@param axis "ln"|"col" Key to index into `inst.dimensions`.
+function PipeMaze:is_in_range(index, axis)
+    return (index >= 1) and (index <= self.dimensions[axis])
 end
 
 ---@param ln int
@@ -301,10 +295,15 @@ function PipeMaze:is_valid_query(ln, col)
     return self:is_in_range(ln, "ln") and self:is_in_range(col, "col")
 end
 
----@param ln int
----@param col int
-function PipeMaze:get_distance_to_start(ln, col)
+function PipeMaze:get_distance_to_start()
+    local ln, col = self.piece.ln, self.piece.col
     return math.abs((self.start.ln - ln) - (self.start.col - col))
+end
+
+function PipeMaze:is_at_start()
+    -- Separating into variables purely so I can parse this at a glance better
+    local ln, col = self.piece.ln, self.piece.col
+    return (ln == self.start.ln) and (col == self.start.col)
 end
 
 --------------------------------------------------------------------------------
