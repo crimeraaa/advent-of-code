@@ -7,7 +7,7 @@ require "util/table"
 require "util/prettyprint"
 
 PROJECT_DIR = WORKSPACE_DIR .. convert_OSpath("/2023/10-pipemaze/")
-FALLBACK = PROJECT_DIR .. "sample.txt"
+FALLBACK = PROJECT_DIR .. "complex.txt"
 
 ---@class PipeMaze
 ---@field map PipeChars[][] Tile data or distance (in tiles) to start.
@@ -79,26 +79,14 @@ function PipeMaze:get_shape(ln, col) -- mainly to initialize starting position
 end
 
 function PipeMaze:get_neighbors(ln, col)
-    local grid = {} ---@type MapInfo[][]
-    for i = -1, 1 do
-        local line = {} ---@type MapInfo[]
-        for ii = -1, 1 do
-            local offset_ln = ln + i
-            local offset_col = col + ii
-            if self:is_valid_offset(offset_ln, offset_col) then
-                line[#line + 1] = {ln = offset_ln, col = offset_col}
-            end
-        end
-        grid[#grid+1] = line
-    end
     -- Ignore the other directions (e.g. northeast, southwest).
     -- TODO: how to deal with current piece on corners and/or edges?
     ---@type NeighborSet
     return {
-        north = grid[1][2],
-        west  = grid[2][1],
-        east  = grid[2][3],
-        south = grid[3][2],
+        north = {ln = ln - 1, col = col},
+        west  = {ln = ln,     col = col - 1},
+        east  = {ln = ln,     col = col + 1},
+        south = {ln = ln + 1, col = col},
     }
 end
 
@@ -110,9 +98,11 @@ function PipeMaze:get_valid_connections(neighbors) ---@param neighbors NeighborS
     -- Remember this is in relation to the neighbor, not the caller.
     for direction, opposite in pairs(self.directions) do
         local neighbor = neighbors[direction]
-        local char = self.map[neighbor.ln][neighbor.col]
-        local visited = self.visited[neighbor.ln][neighbor.col]
-        connected[direction] = (not visited) and self.shapes[char][opposite]
+        if neighbor.ln ~= 0 and neighbor.col ~= 0 then
+            local char = self.map[neighbor.ln][neighbor.col]
+            local visited = self.visited[neighbor.ln][neighbor.col]
+            connected[direction] = (not visited) and self.shapes[char][opposite]
+        end
     end
     return connected
 end
@@ -139,12 +129,13 @@ end
 function PipeMaze:update_tile()
     local ln, col = self.piece.ln, self.piece.col
     local distance = self:get_distance(ln, col)
-    if distance > self.steps then
+    if distance >= self.steps then
         self.steps = distance
     end
     -- Set BEFORE map is updated, else we get bad values!
     self.direction = self:get_possible_move()
-    self.map[ln][col] = distance
+    -- After a while, `steps` does not represent the correct number of values!
+    self.map[ln][col] = math.min(self.steps, distance)
     self.visited[ln][col] = true
     return self
 end
@@ -153,6 +144,7 @@ function PipeMaze:move_piece()
     -- Very last tile will have no valid moves, so explicitly reset ourselves
     if self.direction == nil then
         self.piece.ln, self.piece.col = self.start.ln, self.start.col
+        self.steps = self.steps + 1
        return self 
     end
     local move_fn = self.move_piece_fns[self.direction]

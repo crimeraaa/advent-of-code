@@ -87,6 +87,7 @@ local function make_move_fn(axis, offset)
         local in_range = self:is_in_bounds(test, "ln")
         if in_range and not visited_already(self, test) then
             self.piece[axis] = test
+            self.steps = self.steps + 1
         end
         return self
     end
