@@ -105,24 +105,10 @@ end
 
 ------------------------------- PRINOUT FUNCTIONS ------------------------------
 
-local function print_current(current, distance)
-    local ln, col = current.ln, current.col
-    printf("'%s' (Ln %i, Col %i)\n", MAZE.map[ln][col], ln, col)
-    printf("\t{DISTANCE}: %i\n", distance)
-    for i, neighbor in ipairs(get_relneighbors(ln, col)) do
-        -- since neighbor only have relative values, use params to get absolute
-        local absln, abscol = (ln + neighbor.ln), (col + neighbor.col)
-        local char = MAZE.map[absln][abscol]
-        printf("\tNeighbor %i: '%s' (Ln %i, Col %i)\n", i, char, absln, abscol)
-        printf("\tOffsets by: Ln %i, Col %i\n", neighbor.ln, neighbor.col)
-        printf("\n")
-    end
-end
-
 local function print_maze(copy, current, distance, steps)
-    -- for _, row in ipairs(copy) do
-    --     printf("%s\n", table.concat(row, " "))
-    -- end
+    for _, row in ipairs(copy) do
+        printf("%s\n", table.concat(row, " "))
+    end
     local ln, col = current.ln, current.col
     printf("'%s' (Ln %i, Col %i)\n", MAZE.map[ln][col], ln, col)
     printf("{DISTANCE}: %i\n", distance)
