@@ -103,28 +103,82 @@ local function get_startpos()
     return {ln=0, col=0}
 end
 
------------------------------- SEARCH FUNCTIONS --------------------------------
+------------------------------- PRINOUT FUNCTIONS ------------------------------
 
-local function get_current_neighbors(location)
-    local ln, col = location.ln, location.col
-    local neighbors = get_relneighbors(ln, col)
+local function print_current(current, distance)
+    local ln, col = current.ln, current.col
     printf("'%s' (Ln %i, Col %i)\n", MAZE.map[ln][col], ln, col)
-    for i, neighbor in ipairs(neighbors) do
+    printf("\t{DISTANCE}: %i\n", distance)
+    for i, neighbor in ipairs(get_relneighbors(ln, col)) do
         -- since neighbor only have relative values, use params to get absolute
         local absln, abscol = (ln + neighbor.ln), (col + neighbor.col)
         local char = MAZE.map[absln][abscol]
-        printf("Neighbor %i: '%s' (Ln %i, Col %i)\n", i, char, absln, abscol)
-        printf("    Offsets:     Ln %i, Col %i\n", neighbor.ln, neighbor.col)
+        printf("\tNeighbor %i: '%s' (Ln %i, Col %i)\n", i, char, absln, abscol)
+        printf("\tOffsets by: Ln %i, Col %i\n", neighbor.ln, neighbor.col)
+        printf("\n")
     end
-    return neighbors
+end
+
+local function print_maze(copy, current, distance, steps)
+    -- for _, row in ipairs(copy) do
+    --     printf("%s\n", table.concat(row, " "))
+    -- end
+    local ln, col = current.ln, current.col
+    printf("'%s' (Ln %i, Col %i)\n", MAZE.map[ln][col], ln, col)
+    printf("{DISTANCE}: %i\n", distance)
+    printf("{NUMSTEPS}: %i\n", steps)
+    printf("{NEIGHBOR}: ")
+    for _, neighbor in ipairs(get_relneighbors(ln, col)) do
+        local absln, abscol = (ln + neighbor.ln), (col + neighbor.col)
+        local char = MAZE.map[absln][abscol]
+        printf("'%s', ", char)
+    end
+    printf("\n----------------\n")
+end
+
+------------------------------ SEARCH FUNCTIONS --------------------------------
+
+local function get_distance(current, start)
+    return math.abs((current.ln - start.ln) + (current.col - start.col))
+end
+
+local function get_nextlocation(current, start)
+    local ln, col = current.ln, current.col
+    MAZE.visited[ln][col] = true
+    -- Get the first possible move on a neighbor that hasn't been visited yet
+    for _, neighbor in ipairs(get_relneighbors(ln, col)) do
+        local absln, abscol = (ln + neighbor.ln), (col + neighbor.col)
+        local visited = MAZE.visited[absln][abscol]
+        if is_valid_offset(absln, abscol) and not visited then
+            return {ln=absln, col=abscol} ---@type Location
+        end
+    end
+    return start
 end
 
 ------------------------------- SCRIPT PROPER ----------------------------------
 
-for _, row in ipairs(MAZE.map) do
-    printf("%s\n", table.concat(row, " "))
-end
-
-local start = get_startpos()
+local start = get_startpos();
 local current = {ln=start.ln, col=start.col} ---@type Location
-get_current_neighbors(current)
+local steps = 0
+local distance = 0
+
+-- need a copy so MAZE.map can still be used in lookups for neighbors
+local stepstaken = table.copy(MAZE.map, function(v) return table.copy(v) end)
+print_maze(stepstaken, current, distance, steps)
+
+-- Starting point will be marked visited, so keep going until we hit it again
+repeat
+    stepstaken[current.ln][current.col] = distance
+    steps = steps + 1
+
+    -- will mark current point, especially at starting point, as visited
+    current = get_nextlocation(current, start)
+
+    -- gets raw distance (not considering path) to starting point
+    distance = get_distance(current, start)
+until MAZE.visited[current.ln][current.col]
+
+print_maze(stepstaken, current, distance, steps)
+
+printf("The farthest point is %i steps away.\n", math.floor(steps / 2))
