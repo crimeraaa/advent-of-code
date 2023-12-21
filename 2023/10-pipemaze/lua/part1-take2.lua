@@ -173,49 +173,68 @@ end
 ------------------------------- DEQUE SOLUTION ---------------------------------
 -- Do a breadth-first-search (BFS)
 
+---@alias MapQueue {info:Location, dist:int}
 
-local start = get_startpos()
-local dq = deque.new(start) -- internal buffer is a 1D `Location` array
-local visited = {} ---@type Location[]
+local visited = {} ---@type MapQueue[]
+
+-- first element is just starting position w/ default distance of 0
+local start = {info=get_startpos(), dist=0} ---@type MapQueue
+
+-- Do this so we don't waste 1 cycle later on
+visited[#visited+1] = start
+
+-- internal buffer is a 1D array of MapQueues
+local dq = deque.new(start) 
+
 
 -- Linear search but whatever I don't care enough
-local function already_visited(loc)
+local function already_visited(mq) ---@param mq MapQueue
     for i, v in ipairs(visited) do
-        if v.ln == loc.ln and v.col == loc.col then
+        if v.info.ln == mq.info.ln and v.info.col == mq.info.col then
             return true
         end
     end
     return false
 end
 
-local function queue_neighbors(ln, col)
+local function queue_neighbors(ln, col, dist) 
     for i, neighbor in ipairs(get_relneighbors(ln, col)) do
         local absln, abscol = (ln + neighbor.ln), (col + neighbor.col)
-        local loc = {ln=absln, col=abscol} ---@type Location
-        if not already_visited(loc) then
-            visited[#visited+1] = loc
-            dq:push_right(loc)
+        -- Adding 1 helps us keep track of steps for this particular path.
+        ---@type MapQueue
+        local test = {
+            info = {ln = absln, col = abscol}, 
+            dist = dist + 1
+        } 
+        -- Paths who were faster to reach here would've already marked this.
+        if not already_visited(test) then
+            visited[#visited+1] = test
+            dq:push_right(test)
         end
     end
 end
 
-for _, row in ipairs(MAZE.map) do
-    printf("%s\n", table.concat(row, " "))
-end
+-- for _, row in ipairs(MAZE.map) do
+--     printf("%s\n", table.concat(row, " "))
+-- end
+
+local maxsteps = 0
 
 local copy = table.copy(MAZE.map, function(v) return table.copy(v) end)
-local dist = 0
 while dq:len() > 0 do
-    local popped = dq:pop_left() ---@type Location
-    visited[#visited+1] = popped
-    local ln, col = popped.ln, popped.col
-    -- TODO: fix this, it currently gets distance w/o considering actual path
-    dist = math.abs(ln - start.ln) + math.abs(col - start.col)
+    local popped = dq:pop_left() ---@type MapQueue
+    local ln, col, dist = popped.info.ln, popped.info.col, popped.dist
+    local char = MAZE.map[ln][col]
     copy[ln][col] = dist
-    printf("{CURRENT}: '%s' (Ln %i, Col %i): Distance %i\n", MAZE.map[ln][col], ln, col, dist)
-    queue_neighbors(ln, col)
+    queue_neighbors(ln, col, dist)
+    -- printf("'%s': Ln %i, Col %i, Dist %i\n", char, ln, col, dist)
+    if dist > maxsteps then
+        maxsteps = dist
+    end
 end
 
-for _, row in ipairs(copy) do
-    printf("%s\n", table.concat(row, " "))
-end
+-- for _, row in ipairs(copy) do
+--     printf("%s\n", table.concat(row, " "))
+-- end
+
+printf("Farthest point: %i steps\n", maxsteps)
