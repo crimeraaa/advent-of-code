@@ -170,7 +170,52 @@ end
 -- printf("The farthest point is %i steps away.\n", math.floor(steps / 2))
 
 
+------------------------------- DEQUE SOLUTION ---------------------------------
 -- Do a breadth-first-search (BFS)
 
----@type Deque<Location>
-local queue = deque.new(get_startpos(), 0)
+
+local start = get_startpos()
+local dq = deque.new(start) -- internal buffer is a 1D `Location` array
+local visited = {} ---@type Location[]
+
+-- Linear search but whatever I don't care enough
+local function already_visited(loc)
+    for i, v in ipairs(visited) do
+        if v.ln == loc.ln and v.col == loc.col then
+            return true
+        end
+    end
+    return false
+end
+
+local function queue_neighbors(ln, col)
+    for i, neighbor in ipairs(get_relneighbors(ln, col)) do
+        local absln, abscol = (ln + neighbor.ln), (col + neighbor.col)
+        local loc = {ln=absln, col=abscol} ---@type Location
+        if not already_visited(loc) then
+            visited[#visited+1] = loc
+            dq:push_right(loc)
+        end
+    end
+end
+
+for _, row in ipairs(MAZE.map) do
+    printf("%s\n", table.concat(row, " "))
+end
+
+local copy = table.copy(MAZE.map, function(v) return table.copy(v) end)
+local dist = 0
+while dq:len() > 0 do
+    local popped = dq:pop_left() ---@type Location
+    visited[#visited+1] = popped
+    local ln, col = popped.ln, popped.col
+    -- TODO: fix this, it currently gets distance w/o considering actual path
+    dist = math.abs(ln - start.ln) + math.abs(col - start.col)
+    copy[ln][col] = dist
+    printf("{CURRENT}: '%s' (Ln %i, Col %i): Distance %i\n", MAZE.map[ln][col], ln, col, dist)
+    queue_neighbors(ln, col)
+end
+
+for _, row in ipairs(copy) do
+    printf("%s\n", table.concat(row, " "))
+end

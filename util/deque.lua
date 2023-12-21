@@ -19,8 +19,6 @@ end
 
 -- Insert an element to the leftmost index, a.k.a. index 1.
 -- Note that this takes care of updating the queue accordingly.
----@generic T
----@param item T
 function deque:push_left(item)
     table.insert(self.buffer, 1, item)
     return self
@@ -28,8 +26,6 @@ end
 
 -- Insert an element a new leftmost index, a.k.a. the very last index + 1.
 -- Note that this takes care of updating the queue accordingly.
----@generic T
----@param item T
 function deque:push_right(item)
     table.insert(self.buffer, item)
     return self
@@ -37,16 +33,12 @@ end
 
 -- Removes the leftmost element (index 1) and returns it to you.
 -- Note that this takes care of updating the queue accordingly.
----@generic T
----@return T
 function deque:pop_left()
     return table.remove(self.buffer, 1)
 end
 
 -- Removes the rightmost element (index `#self.buffer`) and returns it to you.
 -- Note that this takes care of updating the queue accordingly.
----@generic T
----@return T
 function deque:pop_right()
     return table.remove(self.buffer, #self.buffer)
 end
