@@ -1,5 +1,6 @@
 require "util/common"
 require "util/array"
+require "util/deque"
 require "util/stdio"
 require "util/table"
 require "util/prettyprint"

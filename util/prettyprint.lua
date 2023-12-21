@@ -8,10 +8,19 @@ end
 
 -- Index into this so you can quickly set indent "levels" in printouts.
 -- index 0 is a sort of base case: just an empty string, no indentation.
+---@type str[]
 INDENT = {}
-for i = 0, 100 do
+for i = 0, 16 do
     INDENT[i] = make_indent(i)
 end
+
+setmetatable(INDENT, {
+    -- For non-existent indent indexes, we'll create them as needed
+    __index = function(tbl, index) 
+        INDENT[index] = make_indent(index)
+        return INDENT[index]
+    end
+})
 
 -- Create an evenly spaced format string: `"| {label} | {label} | ... |"`
 ---@param padding int How much to space out by.
@@ -25,15 +34,6 @@ end
 --------------------------------------------------------------------------------
 ----------------------- PRETTY TABLE PRINTOUT FUNCTIONS ------------------------
 --------------------------------------------------------------------------------
-
-local function is_array(tbl)
-    local _ArraySize = #tbl -- `#` operator only considers numeric keys
-    local _TotalSize = 0 -- non-numeric keys are not counted in `_ArraySize`.
-    for _ in pairs(tbl) do
-        _TotalSize = _TotalSize + 1
-    end
-    return (_ArraySize == _TotalSize)
-end
 
 -- Convert the given table key `k` for prettier output.
 -- Numerical indexes are converted to `"[%i]"`, everything else is `tostring`'d.
@@ -75,15 +75,18 @@ function print_table(tbl, name, tab, iterator_fn, recurse)
     printf("%s%s = {%s", INDENT[tab], name, _Endl)
 
     -- Dump information of 0-based tables, Lua iterators don't catch these
-    if tbl[0] then
-        print_entry(tab + 1, convert_key(0), convert_value(tbl[0]), _Endl)
+    -- In case we have an __index metamethod, don't invoke it else we may
+    -- loop infinitely!
+    local index_zero = rawget(tbl, 0)
+    if index_zero then
+        print_entry(tab + 1, convert_key(0), convert_value(index_zero), _Endl)
     end
 
     for k, v in iterator_fn(tbl) do
         local _ElemName = convert_key(k)
         if type(v) == "table" then
             --! Prolly infinite loop if 2/more tables point back to each other.
-            local _PairsFn = (is_array(v) and ipairs) or pairs
+            local _PairsFn = (table.isarray(v) and ipairs) or pairs
             print_table(v, _ElemName, tab + 1, _PairsFn, recurse - 1)
         else
             print_entry(tab + 1, _ElemName, convert_value(v), _Endl)

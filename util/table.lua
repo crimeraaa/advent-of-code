@@ -59,3 +59,107 @@ function table.filter(_Array, filter_fn, convert_fn)
     end
     return filtered
 end
+
+---@param source {}
+function table.isarray(source)
+    local arraysize = #source -- `#` operator only considers numeric keys
+    local totalsize = 0 -- non-numeric keys, e.g. strings, are not yet counted
+    -- No need keys or values, just need number of iterations
+    for _ in pairs(source) do
+        totalsize = totalsize + 1
+    end
+    return arraysize == totalsize
+end
+
+-- Convert the given table key `k` for prettier output.
+-- Numerical indexes are converted to `"[%i]"`, everything else is `tostring`'d.
+local function get_keyname(key)
+    local is_num = (type(key) == "number") 
+    local is_str = (type(key) == "string")
+    local fmt = (is_num and "[%.0f]") or (is_str and "[\"%s\"]") or "[%s]"
+    local name = (is_num and tonumber(key)) or tostring(key)
+    return fmt:format(name)
+end
+
+local function get_valuestring(k, v, tab)
+    v = (type(v) == "string" and string.format("\"%s\"", v)) or tostring(v)
+    return string.format("%sK: %s\tV: %s", INDENT[tab], k, v)
+end
+
+-- Somewhat neatly dump all values in the table, including metatables.
+---@param tbl {}
+---@param name? str
+---@param iter_fn? function
+---@param visited? { [tbl]: bool}
+---@param tab? int
+function table.dump(tbl, name, iter_fn, visited, tab)
+    visited = visited or {}
+    if visited[tbl] then
+        return string.format("Already visited table %s. Skipping...", tostring(tbl))
+    end
+    visited[tbl] = true -- need to do it already else may infinite loop
+
+    name = name or "(table)"
+    tab = tab or 0
+    iter_fn = iter_fn or (table.isarray(tbl) and ipairs or pairs)
+
+    local items = {} ---@type str[]
+    items[#items+1] = string.format("%sK: %s\tV: %s", INDENT[tab], name, tostring(tbl))
+    
+    -- printf("%s%s = {\n", INDENT[tab], name)
+    for k, v in iter_fn(tbl) do
+        local keyname = get_keyname(k)
+        if type(v) == "table" then
+            if not visited[v] then
+                local fn = iter_fn or (table.isarray(v) and ipairs or pairs)
+                local output = table.dump(v, keyname, fn, visited, tab+1)
+                if output then
+                    items[#items+1] = output
+                end
+                visited[v] = true
+            end
+        else
+            items[#items+1] = get_valuestring(keyname, v, tab+1)
+        end
+    end
+    local mt = getmetatable(tbl)
+    if mt and not visited[mt] then
+        local output = table.dump(mt, "[metatable]", pairs, visited, tab+1)
+        if output then
+            items[#items+1] = output
+        end
+        visited[mt] = true
+    end
+    return table.concat(items, "\n")
+end
+
+-- Create a simple single-line string of all the iteratable elements.
+-- 
+-- Do note this can get very ugly with nested tables.
+---@param tbl {}
+---@param visited? { [tbl]: bool }
+function table.tostring(tbl, visited)
+    visited = visited or {}
+    if visited[tbl] then
+        return ""
+    end
+    visited[tbl] = true -- mark this table as visited so future calls skip it
+    local items = {}
+    local iter = table.isarray(tbl) and ipairs or pairs
+    for k, value in iter(tbl) do
+        local output
+        if type(value) == "table" then
+            output = table.tostring(value, visited)
+        elseif type(value) == "string" then
+            output = string.format("\"%s\"", value)
+        else
+            output = tostring(value)
+        end
+        -- Don't include [] for numerical indexes as can get very ugly
+        if type(k) ~= "number" then
+            output = string.format("%s = %s", get_keyname(k), output)
+        end
+        items[#items+1] = output
+    end
+    return "{".. table.concat(items, ", ") .."}"
+end

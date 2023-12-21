@@ -144,27 +144,33 @@ end
 
 ------------------------------- SCRIPT PROPER ----------------------------------
 
-local start = get_startpos();
-local current = {ln=start.ln, col=start.col} ---@type Location
-local steps = 0
-local distance = 0
+-- local start = get_startpos();
+-- local current = {ln=start.ln, col=start.col} ---@type Location
+-- local steps = 0
+-- local distance = 0
 
--- need a copy so MAZE.map can still be used in lookups for neighbors
-local stepstaken = table.copy(MAZE.map, function(v) return table.copy(v) end)
-print_maze(stepstaken, current, distance, steps)
+-- -- need a copy so MAZE.map can still be used in lookups for neighbors
+-- local stepstaken = table.copy(MAZE.map, function(v) return table.copy(v) end)
+-- print_maze(stepstaken, current, distance, steps)
 
--- Starting point will be marked visited, so keep going until we hit it again
-repeat
-    stepstaken[current.ln][current.col] = distance
-    steps = steps + 1
+-- -- Starting point will be marked visited, so keep going until we hit it again
+-- repeat
+--     stepstaken[current.ln][current.col] = distance
+--     steps = steps + 1
 
-    -- will mark current point, especially at starting point, as visited
-    current = get_nextlocation(current, start)
+--     -- will mark current point, especially at starting point, as visited
+--     current = get_nextlocation(current, start)
 
-    -- gets raw distance (not considering path) to starting point
-    distance = get_distance(current, start)
-until MAZE.visited[current.ln][current.col]
+--     -- gets raw distance (not considering path) to starting point
+--     distance = get_distance(current, start)
+-- until MAZE.visited[current.ln][current.col]
 
-print_maze(stepstaken, current, distance, steps)
+-- print_maze(stepstaken, current, distance, steps)
 
-printf("The farthest point is %i steps away.\n", math.floor(steps / 2))
+-- printf("The farthest point is %i steps away.\n", math.floor(steps / 2))
+
+
+-- Do a breadth-first-search (BFS)
+
+---@type Deque<Location>
+local queue = deque.new(get_startpos(), 0)
