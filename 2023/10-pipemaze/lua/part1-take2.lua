@@ -105,42 +105,42 @@ end
 
 ------------------------------- PRINOUT FUNCTIONS ------------------------------
 
-local function print_maze(copy, current, distance, steps)
-    for _, row in ipairs(copy) do
-        printf("%s\n", table.concat(row, " "))
-    end
-    local ln, col = current.ln, current.col
-    printf("'%s' (Ln %i, Col %i)\n", MAZE.map[ln][col], ln, col)
-    printf("{DISTANCE}: %i\n", distance)
-    printf("{NUMSTEPS}: %i\n", steps)
-    printf("{NEIGHBOR}: ")
-    for _, neighbor in ipairs(get_relneighbors(ln, col)) do
-        local absln, abscol = (ln + neighbor.ln), (col + neighbor.col)
-        local char = MAZE.map[absln][abscol]
-        printf("'%s', ", char)
-    end
-    printf("\n----------------\n")
-end
+-- local function print_maze(copy, current, distance, steps)
+--     for _, row in ipairs(copy) do
+--         printf("%s\n", table.concat(row, " "))
+--     end
+--     local ln, col = current.ln, current.col
+--     printf("'%s' (Ln %i, Col %i)\n", MAZE.map[ln][col], ln, col)
+--     printf("{DISTANCE}: %i\n", distance)
+--     printf("{NUMSTEPS}: %i\n", steps)
+--     printf("{NEIGHBOR}: ")
+--     for _, neighbor in ipairs(get_relneighbors(ln, col)) do
+--         local absln, abscol = (ln + neighbor.ln), (col + neighbor.col)
+--         local char = MAZE.map[absln][abscol]
+--         printf("'%s', ", char)
+--     end
+--     printf("\n----------------\n")
+-- end
 
 ------------------------------ SEARCH FUNCTIONS --------------------------------
 
-local function get_distance(current, start)
-    return math.abs((current.ln - start.ln) + (current.col - start.col))
-end
+-- local function get_distance(current, start)
+--     return math.abs((current.ln - start.ln) + (current.col - start.col))
+-- end
 
-local function get_nextlocation(current, start)
-    local ln, col = current.ln, current.col
-    MAZE.visited[ln][col] = true
-    -- Get the first possible move on a neighbor that hasn't been visited yet
-    for _, neighbor in ipairs(get_relneighbors(ln, col)) do
-        local absln, abscol = (ln + neighbor.ln), (col + neighbor.col)
-        local visited = MAZE.visited[absln][abscol]
-        if is_valid_offset(absln, abscol) and not visited then
-            return {ln=absln, col=abscol} ---@type Location
-        end
-    end
-    return start
-end
+-- local function get_nextlocation(current, start)
+--     local ln, col = current.ln, current.col
+--     MAZE.visited[ln][col] = true
+--     -- Get the first possible move on a neighbor that hasn't been visited yet
+--     for _, neighbor in ipairs(get_relneighbors(ln, col)) do
+--         local absln, abscol = (ln + neighbor.ln), (col + neighbor.col)
+--         local visited = MAZE.visited[absln][abscol]
+--         if is_valid_offset(absln, abscol) and not visited then
+--             return {ln=absln, col=abscol} ---@type Location
+--         end
+--     end
+--     return start
+-- end
 
 ------------------------------- SCRIPT PROPER ----------------------------------
 
@@ -175,48 +175,48 @@ end
 
 ---@alias MapQueue {info:Location, dist:int}
 
-local visited = {} ---@type MapQueue[]
+-- Don't include distances in the hash as they'll mess it up
+-- need this as hashing local tables always results in different hashes
+local function mapqueue_tostring(mq) ---@param mq MapQueue
+    local ln, col = mq.info.ln, mq.info.col
+    return string.format("Ln %i, Col %i", ln, col)
+end
+
+-- `mapqueue_tostring` "hashes" MapQueue instances so they can be looked up.
+local visited = {} ---@type { str:bool }
 
 -- first element is just starting position w/ default distance of 0
 local start = {info=get_startpos(), dist=0} ---@type MapQueue
 
--- Do this so we don't waste 1 cycle later on
-visited[#visited+1] = start
-
 -- internal buffer is a 1D array of MapQueues
 local dq = deque.new(start) 
 
-
--- Linear search but whatever I don't care enough
-local function already_visited(mq) ---@param mq MapQueue
-    for i, v in ipairs(visited) do
-        if v.info.ln == mq.info.ln and v.info.col == mq.info.col then
-            return true
-        end
-    end
-    return false
-end
+-- Do this just so we don't waste 1 cycle later on
+visited[mapqueue_tostring(start)] = true
 
 local function queue_neighbors(ln, col, dist) 
     for i, neighbor in ipairs(get_relneighbors(ln, col)) do
         local absln, abscol = (ln + neighbor.ln), (col + neighbor.col)
-        -- Adding 1 helps us keep track of steps for this particular path.
+        -- Adding 1 helps us keep track of steps for this particular path,
+        -- certainly beats somehow manually calculating the distance...
         ---@type MapQueue
         local test = {
             info = {ln = absln, col = abscol}, 
             dist = dist + 1
-        } 
-        -- Paths who were faster to reach here would've already marked this.
-        if not already_visited(test) then
-            visited[#visited+1] = test
+        }
+        local hash = mapqueue_tostring(test)
+        -- Paths who were faster to reach here would've already marked this,
+        -- and it's likely their values were greater.
+        if not visited[hash] then
+            visited[hash] = true
             dq:push_right(test)
         end
     end
 end
 
--- for _, row in ipairs(MAZE.map) do
---     printf("%s\n", table.concat(row, " "))
--- end
+for _, row in ipairs(MAZE.map) do
+    printf("%s\n", table.concat(row, " "))
+end
 
 local maxsteps = 0
 
@@ -227,14 +227,14 @@ while dq:len() > 0 do
     local char = MAZE.map[ln][col]
     copy[ln][col] = dist
     queue_neighbors(ln, col, dist)
-    -- printf("'%s': Ln %i, Col %i, Dist %i\n", char, ln, col, dist)
+    printf("'%s': Ln %i, Col %i, Dist %i\n", char, ln, col, dist)
     if dist > maxsteps then
         maxsteps = dist
     end
 end
 
--- for _, row in ipairs(copy) do
---     printf("%s\n", table.concat(row, " "))
--- end
+for _, row in ipairs(copy) do
+    printf("%s\n", table.concat(row, " "))
+end
 
 printf("Farthest point: %i steps\n", maxsteps)
