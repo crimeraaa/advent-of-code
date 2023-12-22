@@ -11,6 +11,7 @@
 			".clangd": "yaml",
 			".clang_format": "yaml",
 			".clang-format": "yaml",
+			"*.luau": "lua",
 			"array": "cpp",
 			"string_view": "cpp",
 			"iosfwd": "cpp",
@@ -78,7 +79,17 @@
 			"variant": "cpp",
 			"regex": "cpp",
 			"bitset": "cpp",
-			"__bit_reference": "c"
+			"__bit_reference": "c",
+			"__split_buffer": "cpp",
+			"__config": "cpp",
+			"__hash_table": "cpp",
+			"__locale": "cpp",
+			"__tree": "cpp",
+			"locale": "cpp",
+			"queue": "cpp",
+			"*.def": "cpp",
+			"*.inc": "cpp",
+			"stack": "cpp"
 		}
 	}
 }
