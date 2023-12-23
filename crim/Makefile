@@ -3,10 +3,10 @@ SRC = $(addsuffix .cpp, $(EXE))
 HPP = $(wildcard *.hpp)
 CXXFLAGS += $(C_CXX_DEBUGFLAGS)
 
-all: $(EXE)
+all: bin/$(EXE)
 
-$(EXE): $(SRC) $(HPP)
+bin/$(EXE): $(SRC) $(HPP)
 	$(CXX) $(CXXFLAGS) -o $@ $< 
 
 clean:
-	$(RM) $(EXE)
+	$(RM) bin/$(EXE)
