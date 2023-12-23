@@ -2,3 +2,6 @@
 # will have incompatible configurations in `c_cpp_properties.json`
 # The advent-of-code.code-workspace however is OK.
 .vscode/*.json
+
+# Binaries, especially Linux ones, go here so we don't accidentally commit them.
+bin/

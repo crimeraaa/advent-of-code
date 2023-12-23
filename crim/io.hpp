@@ -12,8 +12,7 @@
 #define crim_log_error(...) crim::log_error(__FILE__, __LINE__, __VA_ARGS__)
 
 namespace crim {
-    static inline void log_error(const char *file, int line, const char *fmt, ...)
-    {
+    static inline void log_error(const char *file, int line, const char *fmt, ...) {
         va_list argp;
         va_start(argp, fmt);
         fprintf(stderr, "%s:%i: ", file, line);

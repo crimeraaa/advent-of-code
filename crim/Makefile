@@ -5,10 +5,8 @@ CXXFLAGS += $(C_CXX_DEBUGFLAGS)
 
 all: $(EXE)
 
-$(EXE): $(SRC)
-	$(CXX) $(CXXFLAGS) -o $@ $^
-
-$(SRC): $(HPP)
+$(EXE): $(SRC) $(HPP)
+	$(CXX) $(CXXFLAGS) -o $@ $< 
 
 clean:
 	$(RM) $(EXE)

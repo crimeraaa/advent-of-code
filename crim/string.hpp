@@ -11,7 +11,7 @@ namespace crim {
     private:
         size_t m_size; // bytes written to so far.
         size_t m_capacity; // bytes allocated in total.
-        size_t *m_ncopies; // #copies made so we don't free the buffer just yet.
+        size_t *m_ncopies; // #copies made to avoid freeing the same memory
         CharT *m_buffer;
     public:
         // Primary constructor via `=`, or just an empty stirng
@@ -23,34 +23,27 @@ namespace crim {
         {
             *m_ncopies = 0;
             append(message);
-            // m_buffer[0] = (CharT)'\0'; // nul terminate ASAP
         }
 
         // Copy-constructor
         basic_string(const basic_string &source) 
             : m_size{source.m_size}
             , m_capacity{source.m_capacity}
-            , m_ncopies{source.m_ncopies}
-            , m_buffer{source.m_buffer} 
+            , m_ncopies{new size_t}
+            , m_buffer{new CharT[m_capacity]} 
         {
-            (*m_ncopies)++; // since is a pointer, all copies update it too
-            // printf("[COPY]: Now have %zu copies.\n", *m_ncopies); //! DEBUG
+            *m_ncopies = 1;
+            memcpy((void*)m_buffer, (void*)source.m_buffer, sizeof(CharT) * m_capacity);
         }
 
         ~basic_string() {
-            if (*m_ncopies == 0) {
-                // printf("[DELETE] No more copies, deleting buffer %p\n", (void*)m_buffer); //!DEBUG
-                delete[] m_buffer;
-                delete m_ncopies;
-            } else {
-                // printf("[DELETE]: Had %zu copies, not deleting buffer %p\n", *m_ncopies, (void*)m_buffer); //! DEBUG
-                (*m_ncopies)--;
-            }
+            delete m_ncopies;
+            delete[] m_buffer;
         }
 
-        const basic_string &append(const CharT *message) {
+        // @bug Leaks memory! Probably on the call to resize.
+        basic_string &append(const CharT *message) {
             // Don't reference at very start, may segfault
-            // printf("[append] Appending to buffer %p.\n", (void*)m_buffer); //! DEBUG
             if (m_size > 0 && m_buffer[m_size - 1] == '\0') {
                 pop_back();
             }
@@ -58,7 +51,7 @@ namespace crim {
             for (size_t i = 0, len = strlen(message) + 1; i < len; i++) {
                 push_back(message[i]);
             }
-            // If I return `*this`, it'll call the constructor...
+            // Calls the constructor ugh
             return *this;
         }
 
@@ -89,14 +82,7 @@ namespace crim {
             for (size_t i = 0; i < newsize; i++) {
                 tmp[i] = m_buffer[i];
             }
-            // Original buffer may be invalidated by copies, so don't!
-            // this is so copies can keep different takes on the original string.
-            if (m_ncopies == 0) {
-                delete[] m_buffer;
-                // printf("[resize] Deleting original buffer: %p\n", (void*)m_buffer); //! DEBUG
-            } else {
-                // printf("[resize] Keeping original buffer: %p\n", (void*)m_buffer); //! DEBUG
-            }
+            delete[] m_buffer;
             m_buffer = tmp;
         }
 
