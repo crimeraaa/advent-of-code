@@ -1,0 +1,37 @@
+{
+    // https://code.visualstudio.com/docs/cpp/c-cpp-properties-schema-reference#_toplevel-properties
+    "env": {
+        "myDefines": [
+            "DEBUG", 
+            "UNICODE", 
+            "_UNICODE"
+        ],
+        "myIncludePaths": [
+            "${workspaceFolder}/**",
+            "${workspaceFolder}/crim"
+        ]
+    },
+    // Cannot make this conditional it seems?
+    "configurations": [
+        {
+            "name": "Linux",
+            "compilerPath": "/usr/bin/g++",
+            "intelliSenseMode": "linux-gcc-x64",
+            "includePath": ["${myIncludePaths}"],
+            "defines": ["${myDefines}"],
+            "cStandard": "c11",
+            "cppStandard": "c++17"
+        },
+        // Wait really all I needed to do was add a space to make it shut up?
+        {
+            "name": "Win32",
+            "compilerPath": "C:/msys64/ucrt64/bin/g++.exe",
+            "intelliSenseMode": "windows-gcc-x64",
+            "includePath": ["${myIncludePaths}"],
+            "defines": ["${myDefines}"],
+            "cStandard": "c11",
+            "cppStandard": "c++17"
+        }
+    ],
+    "version": 4
+}
