@@ -1,8 +1,8 @@
 #pragma once
 
-#include "string.hpp"
-#include <cstdarg>
-#include <cstdio>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 /**
  * `__FILE__` and `__FILE__` are expanded at compile-time.
@@ -12,13 +12,6 @@
 #define crim_log_error(...) crim::log_error(__FILE__, __LINE__, __VA_ARGS__)
 
 namespace crim {
-    // [See here](https://stackoverflow.com/a/16513259) for more information.
-    // Instead of throwing errors, though, I prefer to return empty buffers.
-    // class io_read_error : public std::runtime_error {
-    // public:
-    //     io_read_error(const char *msg) : std::runtime_error(msg) {}
-    // };
-
     static inline void log_error(const char *file, int line, const char *fmt, ...)
     {
         va_list argp;
@@ -56,65 +49,46 @@ namespace crim {
      * Reads a line of text, up until the first line-ending character, and stores
      * the contents in a nul-terminated buffer.
      * @param stream Where the read from, e.g. `stdin` or a file handle. 
-     * @param buffer Where to store the data.
-     * @note On failure to read line-ending, returns an empty string (size 0).
-     * This may be different if user entered an empty string (size 1).
      */
-    string readline(FILE* stream) {
-        string buffer;
+    char *readline(FILE* stream) {
+        char *buffer = NULL;
+        size_t index = 0;
+        size_t capacity = 0;
         int c; // use `int` so we can check for EOF
         while ((c = fgetc(stream)) != EOF && !isendl(c)) {
-            buffer.push_back(c);
+            // buffer.push_back(c);
+            if (index + 1 > capacity) {
+                capacity += 128;
+                char *tmp = (char*)realloc(buffer, sizeof(*buffer) * capacity);
+                if (tmp == NULL) {
+                    crim_log_error("Failed to resize buffer!\n");
+                    free(buffer);
+                    return NULL;
+                }
+                buffer = tmp;
+            }
+            buffer[index++] = (char)c;
         }
-
-        // Return-value-optimization may not happen when there are 2 or more,
-        // possible values (especially named) that can be returned.
-        // See here: https://en.wikipedia.org/wiki/Copy_elision#RVO
-        // 
-        // So as a result, I've resorted to this.
+        buffer[index] = '\0';
         if (!readendl(c, stream)) {
             crim_log_error("Failed to read line ending!");
-            buffer.clear();
-        } else {
-            buffer.push_back('\0');
+            free(buffer);
+            return NULL;
         }
         return buffer;
     }
 
     /**
-     * Prompts the user for a line of `char`s from the standard input stream.
-     * @param fmt String literal or format string for the prompt.
-     * @param ... Arguments to format string, if any.
-     * @return `crim::string` container of the line that was read.
-     * @note Benefits from return-value optimization in its current state.
+     * Prompts user to enter a line of text into the standard input stream.
+     * Their inputs are stored in a heap-allocated `char` pointer.
+     * @param fmt C string literal (`char*`) which can be a format string. 
+     * @param ... Format specifier arguments to the format string, if any.
      */
-    string get_string(const char *fmt, ...) {
+    char *get_string(const char *fmt, ...) {
         va_list argp;
-        
-        // verbose and stupid C-style varargs, but this just prints the prompt
         va_start(argp, fmt);
         vfprintf(stdout, fmt, argp);
         va_end(argp);
-
-        // yay return-value-optimization
         return readline(stdin);
-    }
-
-    dyarray<string> readfile(const char *filename) {
-        dyarray<string> buffer;
-        FILE* handle = fopen(filename, "r");
-        if (handle) {
-            long FILESTART = ftell(handle);
-            fseek(handle, 0, SEEK_END);
-            long FILEEND = ftell(handle);
-            fseek(handle, 0, SEEK_SET); // bring back to start so can read properly
-
-            while (ftell(handle) < FILEEND) {
-                // Destructor gets called -_-
-                buffer.push_back(readline(handle));
-            }
-            fclose(handle);
-        }
-        return buffer;
     }
 };

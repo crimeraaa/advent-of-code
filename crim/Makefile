@@ -1,4 +1,4 @@
-EXE = segfault
+EXE = hello
 SRC = $(addsuffix .cpp, $(EXE))
 HPP = $(wildcard *.hpp)
 CXXFLAGS += $(C_CXX_DEBUGFLAGS)

@@ -4,87 +4,113 @@
 #include <string.h>
 #include <stdexcept>
 
-#include "dyarray.hpp"
-
 namespace crim {
-    /**
-     * A growable string buffer.
-     * @tparam CharT A character type, e.g. `char` or `wchar_t`.
-     */
-    template<typename CharT> class basic_string : public dyarray<CharT> {
-        // dyarray<CharT> *base = static_cast<dyarray<CharT>*>(this); // lol
+    template<class CharT> class basic_string {
+        static constexpr size_t STRING_BUFFER_START = 16;
+        static constexpr size_t STRING_MAX_CAPACITY = 0xFFFFFF;
+    private:
+        size_t m_size; // bytes written to so far.
+        size_t m_capacity; // bytes allocated in total.
+        size_t *m_ncopies; // #copies made so we don't free the buffer just yet.
+        CharT *m_buffer;
     public:
-        // If no immediate assignment, start with an empty string, but size 0.
-        basic_string() {
-            this->m_buffer[0] = '\0';
+        // Primary constructor via `=`, or just an empty stirng
+        basic_string(const CharT *message = "")
+            : m_size{0}
+            , m_capacity{STRING_BUFFER_START}
+            , m_ncopies{new size_t}
+            , m_buffer{new CharT[STRING_BUFFER_START]} 
+        {
+            *m_ncopies = 0;
+            append(message);
+            // m_buffer[0] = (CharT)'\0'; // nul terminate ASAP
         }
 
-        // Initialize your string with some message.
-        basic_string(const CharT *message) {
-            append(message);
+        // Copy-constructor
+        basic_string(const basic_string &source) 
+            : m_size{source.m_size}
+            , m_capacity{source.m_capacity}
+            , m_ncopies{source.m_ncopies}
+            , m_buffer{source.m_buffer} 
+        {
+            (*m_ncopies)++; // since is a pointer, all copies update it too
+            // printf("[COPY]: Now have %zu copies.\n", *m_ncopies); //! DEBUG
+        }
+
+        ~basic_string() {
+            if (*m_ncopies == 0) {
+                // printf("[DELETE] No more copies, deleting buffer %p\n", (void*)m_buffer); //!DEBUG
+                delete[] m_buffer;
+                delete m_ncopies;
+            } else {
+                // printf("[DELETE]: Had %zu copies, not deleting buffer %p\n", *m_ncopies, (void*)m_buffer); //! DEBUG
+                (*m_ncopies)--;
+            }
+        }
+
+        const basic_string &append(const CharT *message) {
+            // Don't reference at very start, may segfault
+            // printf("[append] Appending to buffer %p.\n", (void*)m_buffer); //! DEBUG
+            if (m_size > 0 && m_buffer[m_size - 1] == '\0') {
+                pop_back();
+            }
+            // Add 1 to len so we copy nul terminator
+            for (size_t i = 0, len = strlen(message) + 1; i < len; i++) {
+                push_back(message[i]);
+            }
+            // If I return `*this`, it'll call the constructor...
+            return *this;
+        }
+
+        void push_back(CharT elem) {
+            if (m_size > STRING_MAX_CAPACITY) {
+                throw std::length_error("Reached maximum string length!");
+            }
+            // capacity is 1-based, so if index = 1 and capacity = 1 realloc
+            if (m_size + 1 > m_capacity) {
+                m_capacity *= 2; // prolly faster this way also am lazy
+                resize(m_capacity, m_size);
+            }
+            m_buffer[m_size++] = elem;
+        }
+
+        CharT pop_back() {
+            return m_buffer[m_size--];
         }
 
         /**
-         * Returns a pointer to the start of your stored character buffer. 
-         * @warning Don't modify pls else bad bad stuff will happen okthxbai :)
-         * @note Remember that it is (or should be, anyway) nul terminated!
+         * Basically `realloc` in C.
+         * @param newcap  How much new memory to allocate, can be more or less.
+         * @param newsize Up to how many elements to copy.
+         * @warning You can overwrite memory if you're not careful!
          */
-        const CharT *c_str() {
-            return this->m_buffer;
+        void resize(size_t newcap, size_t newsize) {
+            CharT *tmp = new CharT[newcap];
+            for (size_t i = 0; i < newsize; i++) {
+                tmp[i] = m_buffer[i];
+            }
+            // Original buffer may be invalidated by copies, so don't!
+            // this is so copies can keep different takes on the original string.
+            if (m_ncopies == 0) {
+                delete[] m_buffer;
+                // printf("[resize] Deleting original buffer: %p\n", (void*)m_buffer); //! DEBUG
+            } else {
+                // printf("[resize] Keeping original buffer: %p\n", (void*)m_buffer); //! DEBUG
+            }
+            m_buffer = tmp;
         }
 
-        // Assigns some message into your buffer directly.
-        basic_string &operator=(const CharT *source) {
-            // Buffer will (hopefully) never be unitialized
-            return append(source);
-        }
-
-        // Appends the given text to your string buffer and removes leading
-        // nul termination.
-        basic_string &operator+=(const CharT *source) {
-            if (this->at(this->size() - 1) == '\0') {
-                this->pop_back();
-            }
-            return append(source);
-        }
-
-        bool compare(const basic_string &lhs, const basic_string &rhs) {
-            if (lhs.m_size != rhs.m_size) {
-                return false;
-            }
-            for (size_t i = 0; i < lhs.m_size; i++) {
-                if (lhs.m_buffer[i] != rhs.m_buffer[i]) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        // Probably won't work for temporary instances but hey
-        bool operator==(const basic_string &rhs) {
-            return compare(*this, rhs);
-        }
-
-        // Appends the given text to your string buffer.
-        basic_string &append(const CharT *source) {
-            // Remember that strlen doesn't include the nul char!
-            for (size_t i = 0, len = strlen(source) + 1; i < len; i++) {
-                this->push_back(source[i]);
-            }
-            // append nul for safety
-            if (this->at(this->size() - 1) != '\0') {
-                this->push_back('\0'); 
-            }
-            return *this;
+        /**
+         * Returns your nul-terminated buffer.
+         * @warning Don't modify else bad stuff may happen kthxbai
+         * @note [See here](https://isocpp.org/wiki/faq/const-correctness#const-member-fns) 
+         * as to why all the `const`.
+         */
+        const CharT *data() const {
+            return m_buffer;
         }
     };
 
-    // ----------------- STRING TYPE TEMPLATE INSTANCES ------------------------
-    // For samples, see wherever your C++ <string> implementation is found.
-
-    // A C-style array of `char` with nul-termination and some helper methods.
     using string = basic_string<char>;
-
-    // Similar to `crim::string` but specialized for `wchar_t` or Unicode chars.
     using wstring = basic_string<wchar_t>;
 };
