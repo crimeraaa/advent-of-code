@@ -8,42 +8,20 @@ static inline const char *tostring(bool b) {
     return b ? "true" : "false";
 }
 
-void basictest();
+void chaintest();
 void lengthtest1();
 void lengthtest2();
 void assignmenttest();
 void operatortest();
 void resizetest();
-void looptest() {
-    crim::string test = "Hi mom!";
-    for (const auto &c : test) {
-        printf("%c (%i)\n", c, c);
-    }
-    printf("\n");
-}
+void looptest();
+
 int main(int argc, char *argv[]) {
-    crim::dyarray<int> list = {1, 2, 3, 4, 5};
-
-    list.push_back(7);
-    printf("(list) empty?: %i\n", list.empty());
-    for (const auto &i : list) {
-        printf("%i, ", i);
-    }
-    printf("\n");
-
-    crim::dyarray<int> none = {};
-    none.push_back(14);
-    printf("(none) empty?: %i\n", none.empty());
-    for (const auto &i : none) {
-        printf("%i, ", i);
-    }
-    printf("\n");
-    
     looptest();
     return 0;
 }
 
-void basictest() {
+void chaintest() {
     crim::string name = "Hi mom!";
     printf("%s\n", name.data());
     printf("%s\n", name.append(" I'm making a library! Woohoo!!!!!").data());
@@ -111,4 +89,31 @@ void resizetest() {
     crim::string test = "Hi mom!";
     printf("last char: %i\n", test.at(test.length()));
     printf("last char: %i\n", test.resize(test.length()).at(test.length()));
+}
+
+void looptest() {
+    crim::string test = "Hi mom!";
+    // Does not include nul char as `.end()` points to it most likely.
+    for (const auto &c : test) {
+        printf("%c (%i)\n", c, c);
+    }
+    printf("\n");
+
+    crim::dyarray<int> list = {1, 2, 3, 4, 5};
+    list.push_back(7);
+    // Should be false regardless if we push back or not, and it is!
+    printf("(list) empty?: %i\n", list.empty());
+    for (const auto &i : list) {
+        printf("%i, ", i);
+    }
+    printf("\n");
+
+    crim::dyarray<int> none = {};
+    // none.push_back(14);
+    // When above line is commented out, this is true as expected! :)
+    printf("(none) empty?: %i\n", none.empty());
+    for (const auto &i : none) {
+        printf("%i, ", i);
+    }
+    printf("\n");
 }
