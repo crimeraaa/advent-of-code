@@ -1,35 +1,45 @@
 #include "io.hpp"
+#include "base_dyarray.hpp"
 #include "dyarray.hpp"
 #include "dystring.hpp"
+#include <initializer_list>
 
 static inline const char *tostring(bool b) {
     return b ? "true" : "false";
-}
-
-void operatortest() {
-    crim::string test;
-    crim::string copy;
-    printf("Test: %s\n", test.c_str()); // is empty string so should be ok
-    test += "Hi mom!"; copy = test;
-    printf("Test: %s, Copy: %s\n", test.c_str(), copy.c_str());
-    test = "Hello there!"; copy += test;
-    printf("Test: %s, Copy: %s\n", test.c_str(), copy.c_str());
-    copy = "This is a really long string that will cause reallocation.";
-    copy += " Here is more data that will hopefully let me check for bugs!";
-    printf("Copy: %s\n", copy.c_str());
 }
 
 void basictest();
 void lengthtest1();
 void lengthtest2();
 void assignmenttest();
-
+void operatortest();
+void resizetest();
+void looptest() {
+    crim::string test = "Hi mom!";
+    for (const auto &c : test) {
+        printf("%c (%i)\n", c, c);
+    }
+    printf("\n");
+}
 int main(int argc, char *argv[]) {
-    // basictest();
-    // lengthtest1();
-    // lengthtest2();
-    // assignmenttest();
-    operatortest();
+    crim::dyarray<int> list = {1, 2, 3, 4, 5};
+
+    list.push_back(7);
+    printf("(list) empty?: %i\n", list.empty());
+    for (const auto &i : list) {
+        printf("%i, ", i);
+    }
+    printf("\n");
+
+    crim::dyarray<int> none = {};
+    none.push_back(14);
+    printf("(none) empty?: %i\n", none.empty());
+    for (const auto &i : none) {
+        printf("%i, ", i);
+    }
+    printf("\n");
+    
+    looptest();
     return 0;
 }
 
@@ -66,7 +76,7 @@ void lengthtest2() {
     crim::string dummy;
     printf("(dummy) length: %zu\n", dummy.length());
     printf("(dummy) empty?: %i\n", dummy.empty());
-    printf("(hello) length: %zu\n", hello.size());
+    printf("(hello) length: %zu\n", hello.length());
     printf("(hello) empty?: %i\n", hello.empty());
     printf("%s\n", hello.data());
     for (const auto &c : hello) {
@@ -82,4 +92,23 @@ void assignmenttest() {
     s3 = s1;
     printf("(s1): %s, (s2): %s, (s3): %s\n", s1.data(), s2.data(), s3.c_str());
     printf("(s1): %p, (s2): %p, (s3): %p\n", (void*)s1.data(), (void*)s2.data(), (void*)s3.data());
+}
+
+void operatortest() {
+    crim::string test;
+    crim::string copy;
+    printf("Test: %s\n", test.c_str()); // is empty string so should be ok
+    test += "Hi mom!"; copy = test;
+    printf("Test: %s, Copy: %s\n", test.c_str(), copy.c_str());
+    test = "Hello there!"; copy += test;
+    printf("Test: %s, Copy: %s\n", test.c_str(), copy.c_str());
+    copy = "This is a really long string that will cause reallocation.";
+    copy += " Here is more data that will hopefully let me check for bugs!";
+    printf("Copy: %s\n", copy.c_str());
+}
+
+void resizetest() {
+    crim::string test = "Hi mom!";
+    printf("last char: %i\n", test.at(test.length()));
+    printf("last char: %i\n", test.resize(test.length()).at(test.length()));
 }

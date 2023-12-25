@@ -1,6 +1,6 @@
 #pragma once
 
-#include "dyarray.hpp"
+#include "base_dyarray.hpp"
 
 namespace crim {
     template<class CharT> class dystring;
@@ -71,16 +71,6 @@ public:
     }
 
     // ----------------------- DATA ACCESS OPERATORS --------------------------- 
-
-    /**
-     * @brief   Returns number of characters written to the string buffer. 
-     *          This count already excludes nul-termination.
-     * 
-     * @note    `crim::base_dyarray::size()` functionally does the same thing.
-     */
-    size_t length() const {
-        return this->m_index;
-    }
     
     /**
      * @brief   Read-only nul-terminated C-string for you to print out.
@@ -102,9 +92,9 @@ public:
      *          Note that this does not affect `m_capacity` or any allocations.
      */
     CharT pop_back() {
-        CharT top = this->m_buffer[this->m_index];
-        this->m_buffer[this->m_index--] = '\0';
-        return top;
+        CharT ch_top = this->m_buffer[this->m_size];
+        this->m_buffer[this->m_size--] = '\0';
+        return ch_top;
     }
 
     /**
@@ -121,21 +111,47 @@ public:
         for (size_t i = 0, len = strlen(message); i < len; i++) {
             this->push_back(message[i]);
         }
-        // We want to exlucde the nul char from the count.
-        this->m_buffer[this->m_index] = (CharT)'\0';
+        // We want to exclude the nul char from the count.
+        this->m_buffer[this->m_size] = (CharT)'\0';
         return *this;
     }
 
     dystring &append(CharT c) {
         this->push_back(c);
         // We want to exlucde the nul char from the count.
-        this->m_buffer[this->m_index] = (CharT)'\0';
+        this->m_buffer[this->m_size] = (CharT)'\0';
         return *this;
     }
 };
 
 namespace crim {
-    // A C-style string array.
+    // C-style dynamic string (basic character array).
     using string = dystring<char>;
+
+    // C-style dynamic wide-string (wide-character array).
+    // Prepend literals with `L`, like `L"Hi mom!"`.
     using wstring = dystring<wchar_t>;
-}
+
+    // char8_t was only introduced in C++20.
+    // https://gcc.gnu.org/onlinedocs/cpp/Standard-Predefined-Macros.html
+    #if __cplusplus >= 202002L
+
+    // A C-style dynamic UTF-8 string (UTF-8 encoding character array).
+    using u8string = dystring<char8_t>;
+
+    #endif // __cplusplus >= 202002L
+
+    // char16_t and char32_t were introduced in C++11.
+    #if __cplusplus >= 201103L
+
+    // C-style dynamic UTF-16 string (UTF-16 encoding character array).
+    // Prepend literals with `u`, like `u"Hi mom!"`
+    using u16string = dystring<char16_t>;
+    
+    // C-style dynamic UTF-32 string (UTF-32 encoding character array).
+    // Prepend literals with `u`, like `u"Hi mom!"`
+    using u32string = dystring<char32_t>;
+
+    #endif // __cplusplus >= 201103L
+
+};
