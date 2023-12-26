@@ -50,16 +50,15 @@ public:
      * @brief   Move-constructor which delegates to the base class's version. 
      * 
      *          It does a shallow copy, sets `src`'s pointers to `nullptr`.
-     *          Upon the temporary's destruction, the memory pointed to
-     *          is not freed!
+     *          Upon temporary `src`'s destruction, the memory pointed to by
+     *          `src.m_buffer` is not freed, allowing us to keep it around!
      */
     dystring(dystring &&src) : base(src) {}
 
     // ----------------------- ASSIGNMENT OPERATORS ----------------------------
 
     /**
-     * @brief   Instance reassignment. If you reassign an instance to a new
-     *  
+     * @brief   Instance reassignment. If you reassign an instance to a new 
      *          C-style string literal, we'll empty the buffer first before we
      *          copy over `msg` into the buffer.
      */
@@ -175,7 +174,7 @@ public:
     dystring &append(CharT c) {
         if (c != '\0') {
             base::push_back(c);
-        } 
+        }
         // Don't use push_back since we want to exclude nul char from the count.
         base::m_buffer[base::m_length] = '\0';
         return *this;

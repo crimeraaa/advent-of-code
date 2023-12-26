@@ -25,7 +25,8 @@ namespace crim {
  * @tparam      ElemT   Desired type of the caller template's buffer.
  * 
  * @note        Valgrind suggests that using an out of bounds memory address
- *              for `m_end` is a bad idea, yet most implementations do this way.
+ *              for `m_end` is a bad idea, so be careful how you update it!
+ *              Instead of dereferencing an index, use pointer arithmetic.
  */
 template<class ElemT> struct crim::iterator {
     const ElemT *m_begin; // Address of first written element.
@@ -52,6 +53,12 @@ template<class ElemT> struct crim::iterator {
         return copy(*this, src);
     }
 
+    /**
+     * @brief   Move-assignment.
+     * 
+     * @note    `src`, being named, when passed to other functions, is treated
+     *          as if it were an lvalue reference (a.k.a. `const iterator &`).
+     */
     iterator &operator=(const iterator &&src) {
         return copy(*this, src);
     }
@@ -80,7 +87,7 @@ template<class ElemT> struct crim::iterator {
  * 
  *          For more information, see: https://stackoverflow.com/a/56423659
  * 
- * @tparam  DerivedT   The derived class's name or templated name.
+ * @tparam  DerivedT    The derived class's name, usually the templated name.
  * @tparam  ElemT       Buffer's element type.
  */
 template<class DerivedT, class ElemT> class crim::base_dyarray {
@@ -118,7 +125,9 @@ protected:
         , m_capacity{DYARRAY_STARTCAP}
         , m_buffer{new ElemT[DYARRAY_STARTCAP]}
         , m_iterator(m_buffer, m_buffer)
-    {}
+    {
+        memset(m_buffer, 0, m_capacity);
+    }
 
     /**
      * @brief   Constructor for "array literals" (curly brace literals) which
@@ -136,6 +145,7 @@ protected:
         , m_buffer{new ElemT[m_length]}
         , m_iterator(m_buffer, m_buffer + m_length)
     {
+        memset(m_buffer, 0, m_capacity);
         memcpy(m_buffer, list.begin(), sizeof(ElemT) * m_length);
     }
 
@@ -151,6 +161,7 @@ protected:
         , m_iterator(source.m_iterator)
     {
         // Prolly faster than strcpy and more generic anyway
+        memset(m_buffer, 0, m_capacity);
         // Only copy up to the last written index, not the total capacity!
         memcpy(m_buffer, source.m_buffer, sizeof(ElemT) * m_length);
     }
@@ -182,8 +193,8 @@ public:
     // ---------------------------- DATA ACCESS --------------------------------
 
     /**
-     * @brief   Gets number of characters written to the internal buffer. 
-     *          For strings, this count already excludes nul-termination.
+     * @brief   Gets number of elements written to the internal buffer. For
+     *          strings, this count (likely) already excludes nul-termination.
      */
     size_t length() const {
         return m_length;
@@ -289,6 +300,7 @@ public:
 
             // Copy only up to last written index to avoid unitialized memory.
             m_buffer = new ElemT[src.m_capacity];
+            memset(m_buffer, 0, src.m_capacity);
             memcpy(m_buffer, src.m_buffer, sizeof(ElemT) * src.m_length);
             m_length = src.m_length;
             m_capacity = src.m_capacity;
@@ -349,27 +361,22 @@ public:
         if (n_newsize == m_capacity) {
             return cast_derived();
         }
-        // Dummy since memcpy isn't guaranteed to work for overlapping blocks.
-        ElemT *p_dummy = new ElemT[n_newsize];
+        // Add 1 to copy correct number of elements w/o touching bad memory.
+        ElemT *p_dummy = new ElemT[n_newsize + 1];
+        memset(p_dummy, 0, n_newsize + 1);
 
         // Does the new size extend the buffer or not?
-        bool b_extended = (n_newsize > m_capacity);
-
-        // true:    Copy only up to last element written to.
-        // false:   Copy up to requested size as we'll shorten the buffer.
-        size_t n_copysize = (b_extended) ? m_length : n_newsize;
-
-        // Remember C-style memory manipulation requires size in bytes/chars!
-        memcpy(p_dummy, m_buffer, sizeof(ElemT) * n_copysize);
-        delete[] m_buffer;
-        m_buffer = p_dummy;
-
-        // true:    Maintain the index of the last written element.
-        // false:   Buffer was shortened, so new size *is* the last index.
-        m_length = (b_extended) ? m_length : n_newsize;
+        // true:    Use original `m_index` which is the last written element.
+        // false:   Buffer was shortened, so `n_newsize` *is* the last index.
+        m_length = (n_newsize > m_capacity) ? m_length : n_newsize;
         m_capacity = n_newsize;
         m_iterator.m_begin = p_dummy;
-        m_iterator.m_end = p_dummy + n_copysize; // past end of new memblock
+        m_iterator.m_end = p_dummy + m_length; // past end of new memblock
+
+        // Remember C-style memory manipulation requires size in bytes/chars!
+        memcpy(p_dummy, m_buffer, sizeof(ElemT) * m_length);
+        delete[] m_buffer;
+        m_buffer = p_dummy;
         return cast_derived();
     }
 
@@ -396,6 +403,7 @@ public:
         // were also dynamically allocated!
         delete[] m_buffer;
         m_buffer = new ElemT[m_capacity];
+        memset(m_buffer, 0, m_capacity);
         m_length = 0;
         m_iterator = iterator(m_buffer, m_buffer);
         return cast_derived();

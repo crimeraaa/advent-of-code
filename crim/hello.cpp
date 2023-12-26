@@ -33,7 +33,8 @@ void dyarray_bothctor_test() {
     dyarray<int> vx = {1, 2, 3, 4};
 }
 
-int main(int argc, char *argv[]) {
+int main() {
+    // DYSTRING TESTS
     dystring_chain_test();
     dystring_length_test1();
     dystring_length_test2();
@@ -44,6 +45,9 @@ int main(int argc, char *argv[]) {
     dystring_copyctor_test();
     dystring_movector_test();
     dystring_bothctor_test();
+
+    // DYARRAY TESTS
+    dyarray_bothctor_test();
     return 0;
 }
 
@@ -59,22 +63,22 @@ void dystring_chain_test() {
 void dystring_length_test1() {
     crim::string test;
     printf("(default constructor) length: %zu\n", test.length());
-    printf("(default constructor) empty?: %i\n", test.empty());
+    printf("(default constructor) empty?: %s\n", tostring(test.empty()));
     test = "";
     printf("(empty string assign) length: %zu\n", test.length());
-    printf("(empty string assign) empty?: %i\n", test.empty());
+    printf("(empty string assign) empty?: %s\n", tostring(test.empty()));
     crim::string test2 = "";
     printf("(empty constructor) length: %zu\n", test.length());
-    printf("(empty constructor) empty?: %i\n", test.empty());
+    printf("(empty constructor) empty?: %s\n", tostring(test.empty()));
 }
 
 void dystring_length_test2() {
     crim::string hello = "Hi mom!";
     crim::string dummy;
     printf("(dummy) length: %zu\n", dummy.length());
-    printf("(dummy) empty?: %i\n", dummy.empty());
+    printf("(dummy) empty?: %s\n", tostring(dummy.empty()));
     printf("(hello) length: %zu\n", hello.length());
-    printf("(hello) empty?: %i\n", hello.empty());
+    printf("(hello) empty?: %s\n", tostring(hello.empty()));
     printf("%s\n", hello.data());
     for (const auto &c : hello) {
         printf("%c ", c);
@@ -106,8 +110,17 @@ void dystring_operator_test() {
 
 void dystring_resize_test() {
     crim::string test = "Hi mom!";
-    printf("last char: %i\n", test.at(test.length()));
-    printf("last char: %i\n", test.resize(test.length()).at(test.length()));
+    printf("{resize_test}  test:     \"%s\"\n", test.data());
+    printf("{resize_test}  length:    %zu\n", test.length());
+    printf("{resize_test}  capacity:  %zu\n", test.capacity());
+    printf("{resize_test}  last char: %i\n", test.at(test.length()));
+    // printf("last char: %i\n", test.resize(test.length()).at(test.length()));
+    // test = test.resize(test.length() - sizeof("mom!") + 1).append("dad!");
+    test = std::move(test.resize(test.length()).append('\0'));
+    printf("{resize_test}  test:     \"%s\"\n", test.data());
+    printf("{resize_test}  length:    %zu\n", test.length());
+    printf("{resize_test}  capacity:  %zu\n", test.capacity());
+    printf("{resize_test}  last char: %i\n", test[test.length()]);
 }
 
 void dystring_foreach_test() {
@@ -121,7 +134,7 @@ void dystring_foreach_test() {
     crim::dyarray<int> list = {1, 2, 3, 4, 5};
     list.push_back(7);
     // Should be false regardless if we push back or not, and it is!
-    printf("(list) empty?: %i\n", list.empty());
+    printf("(list) empty?: %s\n", tostring(list.empty()));
     for (const auto &i : list) {
         printf("%i, ", i);
     }
@@ -130,7 +143,7 @@ void dystring_foreach_test() {
     crim::dyarray<int> none = {};
     // none.push_back(14);
     // When above line is commented out, this is true as expected! :)
-    printf("(none) empty?: %i\n", none.empty());
+    printf("(none) empty?: %s\n", tostring(none.empty()));
     for (const auto &i : none) {
         printf("%i, ", i);
     }
