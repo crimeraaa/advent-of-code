@@ -1,3 +1,5 @@
+#pragma once
+
 #include "base_dyarray.hpp"
 
 namespace crim {
@@ -15,15 +17,13 @@ namespace crim {
 template<class ElemT> 
 class crim::dyarray : public crim::base_dyarray<crim::dyarray<ElemT>, ElemT> {
 private:
-    using base_class = base_dyarray<dyarray<ElemT>, ElemT>;
+    using base = base_dyarray<dyarray<ElemT>, ElemT>;
 public:
     // Delegate's to base class's constructor for no arguments.
     // Does some basic allocations.
-    dyarray() : base_class()
-    {}
+    dyarray() : base() {}
 
     // Delegates to base class's constructor for initializer lists.
     // Think of them like array literals.
-    dyarray(std::initializer_list<ElemT> list) : base_class(list)
-    {}
+    dyarray(std::initializer_list<ElemT> list) : base(list) {}
 };

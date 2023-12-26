@@ -3,41 +3,60 @@
 #include "dyarray.hpp"
 #include "dystring.hpp"
 #include <initializer_list>
+#include <iostream>
 
 static inline const char *tostring(bool b) {
     return b ? "true" : "false";
 }
 
-void chaintest();
-void lengthtest1();
-void lengthtest2();
-void assignmenttest();
-void operatortest();
-void resizetest();
-void looptest();
+void dystring_chain_test();
+void dystring_length_test1();
+void dystring_length_test2();
+void dystring_assign_test();
+void dystring_operator_test();
+void dystring_resize_test();
+void dystring_foreach_test();
+void dystring_copyctor_test();
+void dystring_movector_test();
+void dystring_bothctor_test() {
+    crim::string s;
+    s = crim::string("Hi mom!"); // move-assignment
+
+    crim::string t;
+    t = s; // copy-assignment
+    printf("{s} = \"%s\"\n", s.data());
+    printf("{t} = \"%s\"\n", t.data());
+}
+
+void dyarray_bothctor_test() {
+    using crim::dyarray;
+    dyarray<int> vx = {1, 2, 3, 4};
+}
 
 int main(int argc, char *argv[]) {
-    looptest();
+    dystring_chain_test();
+    dystring_length_test1();
+    dystring_length_test2();
+    dystring_assign_test();
+    dystring_operator_test();
+    dystring_resize_test();
+    dystring_foreach_test();
+    dystring_copyctor_test();
+    dystring_movector_test();
+    dystring_bothctor_test();
     return 0;
 }
 
-void chaintest() {
+void dystring_chain_test() {
     crim::string name = "Hi mom!";
     printf("%s\n", name.data());
     printf("%s\n", name.append(" I'm making a library! Woohoo!!!!!").data());
     printf("{name} is empty? %s\n", tostring(name.empty()));
     crim::string blank;
     printf("{blank} is empty? %s\n", tostring(blank.empty()));
-    crim::string shorten = "Shorten me!";
-    printf("{shorten}: \"%s\"\n", shorten.data());
-    printf("{resized}: \"%s\"\n", shorten.resize(shorten.length() - 4).append("!").data());
-    for (const auto &c : shorten) {
-        printf("%c ", c);
-    }
-    printf("\n");
 }
 
-void lengthtest1() {
+void dystring_length_test1() {
     crim::string test;
     printf("(default constructor) length: %zu\n", test.length());
     printf("(default constructor) empty?: %i\n", test.empty());
@@ -49,7 +68,7 @@ void lengthtest1() {
     printf("(empty constructor) empty?: %i\n", test.empty());
 }
 
-void lengthtest2() {
+void dystring_length_test2() {
     crim::string hello = "Hi mom!";
     crim::string dummy;
     printf("(dummy) length: %zu\n", dummy.length());
@@ -63,7 +82,7 @@ void lengthtest2() {
     printf("\n");
 }
 
-void assignmenttest() {
+void dystring_assign_test() {
     crim::string s1 = "Hi mom!";
     crim::string s2 = s1;
     crim::string s3;
@@ -72,7 +91,7 @@ void assignmenttest() {
     printf("(s1): %p, (s2): %p, (s3): %p\n", (void*)s1.data(), (void*)s2.data(), (void*)s3.data());
 }
 
-void operatortest() {
+void dystring_operator_test() {
     crim::string test;
     crim::string copy;
     printf("Test: %s\n", test.c_str()); // is empty string so should be ok
@@ -85,13 +104,13 @@ void operatortest() {
     printf("Copy: %s\n", copy.c_str());
 }
 
-void resizetest() {
+void dystring_resize_test() {
     crim::string test = "Hi mom!";
     printf("last char: %i\n", test.at(test.length()));
     printf("last char: %i\n", test.resize(test.length()).at(test.length()));
 }
 
-void looptest() {
+void dystring_foreach_test() {
     crim::string test = "Hi mom!";
     // Does not include nul char as `.end()` points to it most likely.
     for (const auto &c : test) {
@@ -116,4 +135,37 @@ void looptest() {
         printf("%i, ", i);
     }
     printf("\n");
+}
+
+void dystring_copyctor_test() {
+    crim::string shorten = "Shorten me!";
+    printf("{shorten}: \"%s\"\n", shorten.data());
+    // Before, this would mess up. Now with the move-constructor this is ok.
+    shorten = shorten
+        .resize(shorten.length() - sizeof("me!"))
+        .append("ed!!!");
+    printf("{resized}: \"%s\"\n", shorten.data());
+    // Since crim::base_dyarray has the needed for each iterator functions
+    // `.begin()` and `.end()`, we can do this nicely!
+    for (const auto &c : shorten) {
+        printf("%c (%i)\n", c, c);
+    }
+}
+
+void dystring_movector_test() {
+    // Seems that this calls the basic constructor.
+    crim::string test = crim::string("Hi mom!");
+    printf("{test}: \"%s\"\n", test.data());
+
+    // Calls move-assignment operator.
+    test = crim::string("Hello there!");
+
+    // Would result in a garbage buffer without the move constructor.
+    test = test;
+    printf("{test}: \"%s\"\n", test.data());
+
+    // Make sure our inherited [] operator works!
+    for (size_t i = 0; i < test.length(); i++) {
+        printf("%c (%i)\n", test[i], test[i]);
+    }
 }
