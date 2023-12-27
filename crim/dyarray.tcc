@@ -14,7 +14,7 @@ namespace crim {
  * 
  * @warning This is a work in progress!
  */
-template<class ElemT> 
+template<typename ElemT> 
 class crim::dyarray : public crim::base_dyarray<crim::dyarray<ElemT>, ElemT> {
 private:
     using base = base_dyarray<dyarray<ElemT>, ElemT>;

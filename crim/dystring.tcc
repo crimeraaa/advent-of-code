@@ -12,7 +12,7 @@ namespace crim {
  * 
  * @tparam  CharT Desired character type, e.g. `char`, `wchar_t`, etc.
  */
-template<class CharT> 
+template<typename CharT> 
 class crim::dystring : public crim::base_dyarray<crim::dystring<CharT>, CharT> {
 private:
     // Use this for quick access to base's methods and casts to the base class.
@@ -65,9 +65,9 @@ public:
      *          copy over `msg` into the buffer.
      */
     dystring &operator=(const CharT *msg) {
-        // Could chain `append` as `base::clear` returns reference to `*this`.
-        base::clear();
-        return append(msg);
+        dystring tmp = dystring(msg);
+        std::swap(*this, tmp);
+        return *this;
     }
 
     /**
@@ -85,8 +85,9 @@ public:
      * 
      */
     dystring &operator=(const dystring &src) {
-        base::copy(src);
-        return append('\0');
+        dystring tmp = src;
+        std::swap(*this, tmp.append('\0'));
+        return *this;
     }
 
     /** 
@@ -180,8 +181,9 @@ public:
         if (c != '\0') {
             base::push_back(c);
         }
-        // Don't use push_back since we want to exclude nul char from the count.
-        base::m_buffer[base::m_length] = '\0';
+        // Decrement the index so we effectively ignore nul chars in our count.
+        base::push_back('\0');
+        base::m_length--;
         return *this;
     }
 };

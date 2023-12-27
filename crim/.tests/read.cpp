@@ -2,6 +2,7 @@
 #include <crim/dyarray.tcc>
 #include <stdarg.h>
 #include <stdio.h>
+#include <type_traits>
 
 #define TEST_READFILE_FUNCTION
 
@@ -18,16 +19,16 @@ crim::string readline(FILE *stream) {
     while ((c = fgetc(stream)) != EOF && c != '\r' && c != '\n') {
         in_buffer.push_back((char)c);
     }
-
     // Check for CRLF or lone CR
     if (c == '\r' && (c = fgetc(stream)) != EOF) {
         if (c != '\n' && ungetc(c, stream) == EOF) {
             perror("Failed to read CRLF line ending!");
             in_buffer.clear();
+            return in_buffer;
         }
     }
     in_buffer.append('\0');
-    return in_buffer; // return-value optimization requires a single raw return.
+    return in_buffer; // return-value optimization requires raw returns.
 }
 
 crim::string get_string(const char *fmt, ...) {
@@ -41,17 +42,32 @@ crim::string get_string(const char *fmt, ...) {
 crim::dyarray<crim::string> readfile(const char *fname) {
     crim::dyarray<crim::string> in_buffer;
     FILE *file = fopen(fname, "r");
-    if (file != NULL) {
-        fseek(file, 0, SEEK_END);
-        long pos_eof = ftell(file);
-        fseek(file, 0, SEEK_SET);
-        while (ftell(file) < pos_eof) {
-            // result of readline here is an rvalue so we call the && version
-            in_buffer.push_back(readline(file));
-        }
-        fclose(file);
+    if (file == NULL) {
+        perror("Could not open file");
+        return in_buffer;
     }
-    return in_buffer; // return-value optimization requires a single raw return.
+    while (!feof(file)) {
+        // Pushing back via move-assignment since result is an rvalue.
+        // result of readline here is an rvalue so we call the && version
+        in_buffer.push_back(readline(file));
+
+        // Pushing back via copy-assignment since `s` is an lvalue.
+        // crim::string s = readline(file); in_buffer.push_back(s);
+    }
+    fclose(file);
+    return in_buffer; // return-value optimization requires raw returns.
+}
+
+template<typename IntT> int get_digits(IntT value) {
+    int digits = 0;
+    if constexpr(std::is_signed<IntT>::value) {
+        value *= (value >= 0) ? 1 : -1;
+    }
+    while (value > 0) {
+        digits++;
+        value /= 10;
+    }
+    return digits;
 }
 
 int main(int argc, char *argv[]) {
@@ -60,8 +76,9 @@ int main(int argc, char *argv[]) {
 #ifdef TEST_READFILE_FUNCTION
     // Segfaults when reading this file and the Makefile. I wonder why?
     auto contents = readfile(fname);
+    int padding = get_digits(contents.length());
     for (size_t i = 0; i < contents.length(); i++) {
-        printf("%2zu: %s\n", i + 1, contents[i].c_str());
+        printf("%*zu: %s\n", padding, i + 1, contents[i].c_str());
     }
 #else
     // So reading the file line-by-line here is ok, hmm...

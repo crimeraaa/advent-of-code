@@ -6,13 +6,14 @@
 #include <algorithm>
 #include <initializer_list>
 #include <stdexcept>
+#include <functional>
 
 // Classes that inherit from parents can be forward declared, but the 
 // inheritance itself must only go in the class definition proper.
 namespace crim {
     template<class ElemT> struct iterator;
 
-    template<class DerivedT, class ElemT> class base_dyarray;
+    template<class DerivedT, typename ElemT> class base_dyarray;
 };
 
 /**
@@ -93,15 +94,15 @@ template<class ElemT> struct crim::iterator {
  * @tparam  DerivedT    The derived class's name, usually the templated name.
  * @tparam  ElemT       Buffer's element type.
  */
-template<class DerivedT, class ElemT> class crim::base_dyarray {
+template<class DerivedT, typename ElemT> class crim::base_dyarray {
 private:
     friend DerivedT; // allows access private and protected members of caller!
 
-    DerivedT &cast_derived() {
+    DerivedT &derived_cast() {
         return static_cast<DerivedT &>(*this);
     }
 
-    DerivedT &cast_derived() const {
+    DerivedT &derived_cast() const {
         return static_cast<DerivedT const&>(*this);
     }
 
@@ -126,7 +127,7 @@ protected:
     base_dyarray() 
         : m_length{0}
         , m_capacity{START_CAPACITY}
-        , m_buffer{new ElemT[START_CAPACITY + 1]} // calls default constructors
+        , m_buffer{new ElemT[START_CAPACITY]} // calls default constructors
         , m_iterator(m_buffer, m_buffer)
     {}
 
@@ -143,10 +144,10 @@ protected:
     base_dyarray(std::initializer_list<ElemT> list) 
         : m_length{list.size()}
         , m_capacity{m_length}
-        , m_buffer{new ElemT[m_length + 1]}
+        , m_buffer{new ElemT[m_length]}
         , m_iterator(m_buffer, m_buffer + m_length)
     {
-        m_buffer = std::copy(list.begin(), list.end(), m_buffer);
+        std::copy(list.begin(), list.end(), m_buffer);
     }
 
     /**
@@ -157,10 +158,10 @@ protected:
     base_dyarray(const base_dyarray &src) 
         : m_length{src.m_length}
         , m_capacity{src.m_capacity}
-        , m_buffer{new ElemT[m_capacity + 1]}
+        , m_buffer{new ElemT[m_capacity]}
         , m_iterator(m_buffer, m_buffer + m_length)
     {
-        m_buffer = std::copy(begin(), end(), m_buffer);
+        std::copy(src.begin(), src.end(), m_buffer);
     }
 
     /**
@@ -296,18 +297,16 @@ public:
             delete[] m_buffer;
 
             // Copy only up to last written index to avoid unitialized memory.
-            m_buffer = new ElemT[src.m_capacity + 1];
+            m_buffer = new ElemT[src.m_capacity];
 
             // Don't call memcpy as it won't work for non-trivial types!
-            // memcpy(m_buffer, src.m_buffer, sizeof(ElemT) * src.m_length);
-
-            // Calls copy-constructor for each non-trivial entity.
-            m_buffer = std::copy(src.begin(), src.end(), m_buffer);
+            // std::copy calls copy-constructor for each non-trivial entity.
+            std::copy(src.begin(), src.end(), m_buffer);
             m_length = src.m_length;
             m_capacity = src.m_capacity;
-            m_iterator = iterator(m_buffer, m_buffer + src.m_length);
+            m_iterator.set_pointers(m_buffer, m_buffer + m_length);
         }
-        return cast_derived();
+        return derived_cast();
     }
 
     DerivedT &move(base_dyarray &src) {
@@ -324,46 +323,75 @@ public:
             // Make null so our memory won't be freed just yet.
             src.m_buffer = nullptr;
         }
-        return cast_derived();
+        return derived_cast();
     }
 
     // -------------------------- BUFFER WRITING -------------------------------
 
+private:
+    using push_callback = std::function<void(ElemT &target)>;
+
+    /**
+     * @brief   For strings, Valgrind tells me that using the `x > y` comparison 
+     *          results in invalid reads/writes of 1. Using `x >= y` fixes it.
+     * 
+     * @param   assignment_fn   A lambda that assigns to `m_buffer[m_length]`.
+     *                          This is meant to help generalize between
+     *                          `const ElemT &` and `ElemT &&`.
+     * 
+     * @note    I've opted instead to make `crim::dystring::append` decrement
+     *          `m_length` right after calling `base::push_back('\0')`.
+     *          This should hopefully this easier to work with for non-strings.
+     */
+    DerivedT &push_helper(push_callback assignment_fn) {
+        if (m_length > MAX_LENGTH) {
+            // Also helpful to indicate when I accidentally overflow
+            throw std::length_error("Reached crim::base_dyarray::MAXLENGTH!");
+        } else if (m_length + 1 > m_capacity) {
+            // All the cool kids seem to grow their buffers by doubling it!
+            resize(m_capacity * 2); 
+        }
+
+        assignment_fn(m_buffer[m_length++]);
+
+        // Don't try to dereference unitialized memory and get its address!
+        m_iterator.m_end++;
+        return derived_cast();
+    }
+
+public:
     /**
      * @brief   Moves `entry` to the top of the internal buffer. That is, it is 
      *          moved to the index after the previously written element. 
      * 
+     *          It's mainly helpful for objects with a clear move-assigment,
+     *          such as by overloading the `=` operator. For example, see:
+     *          `crim::dystring &operator=(crim::dystring &&)`.
+     * 
      * @note    We take an rvalue reference so `entry` itself maybe invalidated!
-     *          So this function only really works with temporary values.
+     *          This function only really works with temporary values. 
      */
     DerivedT &push_back(ElemT &&entry) {
-        if (m_length > MAX_LENGTH) {
-            throw std::length_error("Reached crim::base_dyarray::MAXLENGTH!");
-        } else if (m_length + 1 > m_capacity) {
-            // All the cool kids seem to grow their buffers by doubling it!
-            resize(m_capacity * 2); 
-        }
-        // Call move-assignment, need to specify this else we get garbage!
-        m_buffer[m_length++] = std::move(entry);
-        
-        // Don't try to dereference unitialized memory and get its address!
-        m_iterator.m_end++;
-        return cast_derived();
+        // Captures `&&entry` and call move-assignment specifically to avoid
+        // garbage as rvalues are destroyed very easily.
+        return push_helper([&](ElemT &target) {
+            target = std::move(entry);
+        });
     }
 
+    /**
+     * @brief   Copies `entry` by value to the top of the internal buffer. That 
+     *          is, its copy-constructor (or a default one) is called to assign
+     *          that value to the index after the previously written element.
+     * 
+     * @note    We take a const lvalue reference so that we do not need to
+     *          overload for const and non-const, as we do not intend to modify
+     *          `entry` in any way.
+     */
     DerivedT &push_back(const ElemT &entry) {
-        if (m_length > MAX_LENGTH) {
-            throw std::length_error("Reached crim::base_dyarray::MAXLENGTH!");
-        } else if (m_length + 1 > m_capacity) {
-            // All the cool kids seem to grow their buffers by doubling it!
-            resize(m_capacity * 2); 
-        }
-        // Attempt to call copy-assignment.
-        m_buffer[m_length++] = entry;
-        
-        // Don't try to dereference unitialized memory and get its address!
-        m_iterator.m_end++;
-        return cast_derived();
+        return push_helper([&](ElemT &target) {
+            target = entry;
+        });
     }
 
     /**
@@ -380,10 +408,10 @@ public:
     DerivedT &resize(size_t n_newsize) {
         // This is stupid so don't even try :)
         if (n_newsize == m_capacity) {
-            return cast_derived();
+            return derived_cast();
         }
         // Add 1 to copy correct number of elements w/o touching bad memory.
-        ElemT *p_dummy = new ElemT[n_newsize + 1];
+        ElemT *p_dummy = new ElemT[n_newsize];
 
         // Does the new size extend the buffer or not?
         // true:    Use original `m_index` which is the last written element.
@@ -401,7 +429,7 @@ public:
         }
         delete[] m_buffer;
         m_buffer = p_dummy;
-        return cast_derived();
+        return derived_cast();
     }
 
     /**
@@ -424,9 +452,9 @@ public:
         // Tempting to do away with this, but would leak memory if buffer elems
         // were also dynamically allocated!
         delete[] m_buffer;
-        m_buffer = new ElemT[m_capacity + 1];
+        m_buffer = new ElemT[m_capacity];
         m_length = 0;
         m_iterator.set_pointers(m_buffer, m_buffer);
-        return cast_derived();
+        return derived_cast();
     }
 };
