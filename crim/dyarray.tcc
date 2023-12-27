@@ -1,6 +1,6 @@
 #pragma once
 
-#include "base_dyarray.hpp"
+#include "base_dyarray.tcc"
 
 namespace crim {
     template<class ElemT> class dyarray;
@@ -26,4 +26,18 @@ public:
     // Delegates to base class's constructor for initializer lists.
     // Think of them like array literals.
     dyarray(std::initializer_list<ElemT> list) : base(list) {}
+
+    dyarray(const dyarray &src) : base(src) {}
+
+    // Static cast is necessary to call the correct function, otherwise it'll
+    // use the one meant for lvalue references!
+    dyarray(dyarray &&src) : base(static_cast<base&&>(src)) {}
+
+    dyarray &operator=(const dyarray &src) {
+        return base::copy(src);
+    }
+
+    dyarray &operator=(dyarray &&src) {
+        return base::move(src);
+    }
 };

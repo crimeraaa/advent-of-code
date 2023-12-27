@@ -7,8 +7,8 @@
             "_UNICODE"
         ],
         "myIncludePaths": [
-            "${workspaceFolder}/**",
-            "${workspaceFolder}/crim"
+            "${fileDirname}",
+            "${workspaceFolder}"
         ]
     },
     // Cannot make this conditional it seems?

@@ -1,14 +1,19 @@
-EXE = initlist
-SRC = $(addsuffix .cpp, $(EXE))
-HPP = $(wildcard *.hpp)
-CXXFLAGS += $(C_CXX_DEBUGFLAGS)
+# Yank all source files in the current directory
+SRC = $(wildcard *.cpp)
 
-all: bin/$(EXE)
+# Create a list of binaries, each from its respective source file
+EXE = $(SRC:%.cpp=bin/%)
 
-bin/$(EXE): $(SRC)
+# Yank all the crim namespace headers which are in the previous directory
+HPP = $(wildcard ../*.hpp ../*.tcc)
+
+# See ~/devconfig/config.gcc.mk
+CXXFLAGS += $(DEBUGFLAGS)
+
+all: $(EXE)
+
+bin/%: %.cpp $(HPP)
 	$(CXX) $(CXXFLAGS) -o $@ $< 
 
-$(SRC): $(HPP)
-
 clean:
-	$(RM) bin/$(EXE)
+	$(RM) $(EXE)

@@ -1,7 +1,9 @@
-#include "io.hpp"
-#include "base_dyarray.hpp"
-#include "dyarray.hpp"
-#include "dystring.hpp"
+// Make sure ~/repos/advent-of-code is part of the env var `CPLUS_INCLUDE_PATH`!
+#include <crim/io.hpp>
+#include <crim/base_dyarray.tcc>
+#include <crim/dyarray.tcc>
+#include <crim/dystring.tcc>
+
 #include <initializer_list>
 #include <iostream>
 
@@ -29,8 +31,7 @@ void dystring_bothctor_test() {
 }
 
 void dyarray_bothctor_test() {
-    using crim::dyarray;
-    dyarray<int> vx = {1, 2, 3, 4};
+    crim::dyarray<int> vx = {1, 2, 3, 4};
 }
 
 int main() {

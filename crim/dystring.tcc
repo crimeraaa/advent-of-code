@@ -1,6 +1,6 @@
 #pragma once
 
-#include "base_dyarray.hpp"
+#include "base_dyarray.tcc"
 
 namespace crim {
     template<class CharT> class dystring;
@@ -53,7 +53,9 @@ public:
      *          Upon temporary `src`'s destruction, the memory pointed to by
      *          `src.m_buffer` is not freed, allowing us to keep it around!
      */
-    dystring(dystring &&src) : base(src) {}
+    dystring(dystring &&src) : base(static_cast<base&&>(src)) {
+        append('\0');
+    }
 
     // ----------------------- ASSIGNMENT OPERATORS ----------------------------
 
@@ -64,7 +66,8 @@ public:
      */
     dystring &operator=(const CharT *msg) {
         // Could chain `append` as `base::clear` returns reference to `*this`.
-        return base::clear().append(msg);
+        base::clear();
+        return append(msg);
     }
 
     /**
@@ -82,7 +85,8 @@ public:
      * 
      */
     dystring &operator=(const dystring &src) {
-        return base::copy(src).append('\0');
+        base::copy(src);
+        return append('\0');
     }
 
     /** 
@@ -105,7 +109,8 @@ public:
      *          this to avoid freeing allocated memory of temporary instances.
      */
     dystring &operator=(dystring &&src) {
-        return base::move(src).append('\0');
+        base::move(src);
+        return append('\0');
     }
 
     dystring &operator+=(const CharT *msg) {
@@ -123,7 +128,7 @@ public:
      * 
      * @warning Don't modify the contents or else you'll have a bad time kthxbai
      * 
-     * @note    `crim::base_dyarray::data()` functionally does the same thing.
+     * @note    `base::data()` does the same thing, and we call it here!
      */
     const CharT *c_str() const {
         return base::data();
@@ -135,12 +140,12 @@ public:
      * @brief   Removes the most recently written element from the buffer.
      *          Decrements index counter to indicate this index is writeable.
      * 
-     * @note    Overrides base_dyarray one so we can assign nul at the index.
-     *          Note that this does not affect `m_capacity` or any allocations.
+     * @note    Shadows `base::pop_back()` so that we can set the popped index
+     *          to a nul char.
      */
     CharT pop_back() {
-        CharT ch_top = base::m_buffer[base::m_length];
-        base::m_buffer[base::m_length--] = '\0'; // this index is now writeable
+        CharT ch_top = base::pop_back();
+        append('\0'); // this index is now writeable
         return ch_top;
     }
 
@@ -182,27 +187,27 @@ public:
 };
 
 namespace crim {
-    // C-style dynamic string (basic character array).
+    // C-style dynamic string (basic character array container).
     using string = dystring<char>;
 
-    // C-style dynamic wide-string (wide-character array).
+    // C-style dynamic wide-string (wide-character array container).
     // Prepend string literals of this type with `L`, like `L"Hi mom!"`.
     using wstring = dystring<wchar_t>;
 
 // char8_t was only introduced in C++20.
 // https://gcc.gnu.org/onlinedocs/cpp/Standard-Predefined-Macros.html
 #if __cplusplus >= 202002L
-    // A C-style dynamic UTF-8 string (UTF-8 encoding character array).
+    // A C-style dynamic UTF-8 string (UTF-8 encoded character array container).
     using u8string = dystring<char8_t>;
 #endif // __cplusplus >= 202002L
 
 // char16_t and char32_t were introduced in C++11.
 #if __cplusplus >= 201103L
-    // C-style dynamic UTF-16 string (UTF-16 encoding character array).
+    // C-style dynamic UTF-16 string (UTF-16 encoded character array container).
     // Prepend string literals of this type with `u`, like `u"Hi mom!"`
     using u16string = dystring<char16_t>;
     
-    // C-style dynamic UTF-32 string (UTF-32 encoding character array).
+    // C-style dynamic UTF-32 string (UTF-32 encoded character array container).
     // Prepend string literals of this type `u`, like `u"Hi mom!"`
     using u32string = dystring<char32_t>;
 #endif // __cplusplus >= 201103L

@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <string.h>
 
+#include <algorithm>
 #include <initializer_list>
 #include <stdexcept>
 
@@ -29,20 +30,22 @@ namespace crim {
  *              Instead of dereferencing an index, use pointer arithmetic.
  */
 template<class ElemT> struct crim::iterator {
-    const ElemT *m_begin; // Address of first written element.
-    const ElemT *m_end; // Address right past the last written element.
+    using ptr = const ElemT*;
+    ptr m_begin; // Address of first written element.
+    ptr m_end; // Address right past the last written element.
 
-    iterator(const ElemT *start, const ElemT *stop) 
-        : m_begin{start}
-        , m_end{stop} 
-    {}
+    iterator(ptr start, ptr stop) : m_begin{start}, m_end{stop} {}
 
-    iterator(const iterator &src) 
-        : m_begin{src.m_begin}
-        , m_end{src.m_end} 
-    {}
+    iterator(const iterator &src) : iterator(src.m_begin, src.m_end) {}
 
-    static iterator &copy(iterator &lhs, const iterator &rhs) {
+    iterator(const iterator &&src) : iterator(src.m_begin, src.m_end) {}
+
+    void set_pointers(ptr start, ptr stop) {
+        m_begin = start;
+        m_end = stop;
+    }
+
+    static inline iterator &copy(iterator &lhs, const iterator &rhs) {
         lhs.m_begin = rhs.m_begin;
         lhs.m_end = rhs.m_end;
         return lhs;
@@ -103,8 +106,8 @@ private:
     }
 
 protected:
-    static constexpr size_t DYARRAY_STARTCAP = 16;
-    static constexpr size_t DYARRAY_MAXLENGTH = 0xFFFFFFFF; // 1-based.
+    static constexpr size_t START_CAPACITY = 16;
+    static constexpr size_t MAX_LENGTH = 0xFFFFFFFF; // 1-based.
     size_t m_length; // Number of elements written to buffer currently.
     size_t m_capacity; // Number of elements that buffer could hold.
     ElemT *m_buffer; // Heap-allocated 1D array of the specified type.
@@ -122,12 +125,10 @@ protected:
      */
     base_dyarray() 
         : m_length{0}
-        , m_capacity{DYARRAY_STARTCAP}
-        , m_buffer{new ElemT[DYARRAY_STARTCAP]}
+        , m_capacity{START_CAPACITY}
+        , m_buffer{new ElemT[START_CAPACITY + 1]} // calls default constructors
         , m_iterator(m_buffer, m_buffer)
-    {
-        memset(m_buffer, 0, m_capacity);
-    }
+    {}
 
     /**
      * @brief   Constructor for "array literals" (curly brace literals) which
@@ -142,47 +143,43 @@ protected:
     base_dyarray(std::initializer_list<ElemT> list) 
         : m_length{list.size()}
         , m_capacity{m_length}
-        , m_buffer{new ElemT[m_length]}
+        , m_buffer{new ElemT[m_length + 1]}
         , m_iterator(m_buffer, m_buffer + m_length)
     {
-        memset(m_buffer, 0, m_capacity);
-        memcpy(m_buffer, list.begin(), sizeof(ElemT) * m_length);
+        m_buffer = std::copy(list.begin(), list.end(), m_buffer);
     }
 
     /**
-     * @brief   Copy-constructor, does deep-copy of all of `source`'s data.
+     * @brief   Copy-constructor, does deep-copy of all of `src`'s data.
      * 
      * @exception   `std::bad_alloc` due to the call to `new`.
      */
-    base_dyarray(const base_dyarray &source) 
-        : m_length{source.m_length}
-        , m_capacity{source.m_capacity}
-        , m_buffer{new ElemT[m_capacity]}
-        , m_iterator(source.m_iterator)
+    base_dyarray(const base_dyarray &src) 
+        : m_length{src.m_length}
+        , m_capacity{src.m_capacity}
+        , m_buffer{new ElemT[m_capacity + 1]}
+        , m_iterator(m_buffer, m_buffer + m_length)
     {
-        // Prolly faster than strcpy and more generic anyway
-        memset(m_buffer, 0, m_capacity);
-        // Only copy up to the last written index, not the total capacity!
-        memcpy(m_buffer, source.m_buffer, sizeof(ElemT) * m_length);
+        m_buffer = std::copy(begin(), end(), m_buffer);
     }
 
     /**
-     * @brief   Move-constructor, does a shallow copy of `temp`, which is a
+     * @brief   Move-constructor, does a shallow copy of `tmp`, which is a
      *          temporary value/expression (usually an rvalue).
      * 
-     *          `temp` itself has its internal buffer set to `nullptr` after 
+     *          `tmp` itself has its internal buffer set to `nullptr` after 
      *          copying so that upon its destruction, the memory isn't freed!
      * 
      * @note    [See here for help.](https://learn.microsoft.com/en-us/cpp/cpp/move-constructors-and-move-assignment-operators-cpp?view=msvc-170)
      */
-    base_dyarray(base_dyarray &&temp) 
-        : m_length{temp.m_length}
-        , m_capacity{temp.m_capacity}
-        , m_buffer{temp.m_buffer}
-        , m_iterator(temp.m_iterator)
+    base_dyarray(base_dyarray &&tmp) 
+        : m_length{tmp.m_length}
+        , m_capacity{tmp.m_capacity}
+        , m_buffer{tmp.m_buffer}
+        , m_iterator(tmp.m_iterator)
     {
-        // erase so that when temp is destroyed we don't free the memory.
-        temp.m_buffer = nullptr;
+        // erase so that when tmp is destroyed we don't free the memory.
+        tmp.m_buffer = nullptr;
     }
 
     ~base_dyarray() {
@@ -250,8 +247,8 @@ public:
      * 
      * @note    static constexpr member functions cannot be const functions.
      */
-    static constexpr size_t max_size() {
-        return DYARRAY_MAXLENGTH;
+    static constexpr size_t max_length() {
+        return MAX_LENGTH;
     }
 
     /**
@@ -294,14 +291,18 @@ public:
     // You'll need a wrapper like `crim::string &operator=(crim::string &&src)`.
 
     DerivedT &copy(const base_dyarray &src) {
-        // Copying ourselves results in garbage for the buffer, for some reason.
+        // Don't copy ourselves because memcpy on overlaps won't end well.
         if (this != &src) {
             delete[] m_buffer;
 
             // Copy only up to last written index to avoid unitialized memory.
-            m_buffer = new ElemT[src.m_capacity];
-            memset(m_buffer, 0, src.m_capacity);
-            memcpy(m_buffer, src.m_buffer, sizeof(ElemT) * src.m_length);
+            m_buffer = new ElemT[src.m_capacity + 1];
+
+            // Don't call memcpy as it won't work for non-trivial types!
+            // memcpy(m_buffer, src.m_buffer, sizeof(ElemT) * src.m_length);
+
+            // Calls copy-constructor for each non-trivial entity.
+            m_buffer = std::copy(src.begin(), src.end(), m_buffer);
             m_length = src.m_length;
             m_capacity = src.m_capacity;
             m_iterator = iterator(m_buffer, m_buffer + src.m_length);
@@ -310,7 +311,7 @@ public:
     }
 
     DerivedT &move(base_dyarray &src) {
-        // Copying ourselves results in garbage for the buffer, for some reason.
+        // If we try to move ourselves, we'll free the same buffer!
         if (this != &src) {
             delete[] m_buffer; 
 
@@ -329,16 +330,35 @@ public:
     // -------------------------- BUFFER WRITING -------------------------------
 
     /**
-     * @brief   Appends `entry` to the internal buffer. That is, it is added to
-     *          the index after the previously written element.
+     * @brief   Moves `entry` to the top of the internal buffer. That is, it is 
+     *          moved to the index after the previously written element. 
+     * 
+     * @note    We take an rvalue reference so `entry` itself maybe invalidated!
+     *          So this function only really works with temporary values.
      */
-    DerivedT &push_back(ElemT entry) {
-        if (m_length > DYARRAY_MAXLENGTH) {
-            throw std::length_error("Reached base_dyarray maximum allocations!");
+    DerivedT &push_back(ElemT &&entry) {
+        if (m_length > MAX_LENGTH) {
+            throw std::length_error("Reached crim::base_dyarray::MAXLENGTH!");
         } else if (m_length + 1 > m_capacity) {
             // All the cool kids seem to grow their buffers by doubling it!
             resize(m_capacity * 2); 
         }
+        // Call move-assignment, need to specify this else we get garbage!
+        m_buffer[m_length++] = std::move(entry);
+        
+        // Don't try to dereference unitialized memory and get its address!
+        m_iterator.m_end++;
+        return cast_derived();
+    }
+
+    DerivedT &push_back(const ElemT &entry) {
+        if (m_length > MAX_LENGTH) {
+            throw std::length_error("Reached crim::base_dyarray::MAXLENGTH!");
+        } else if (m_length + 1 > m_capacity) {
+            // All the cool kids seem to grow their buffers by doubling it!
+            resize(m_capacity * 2); 
+        }
+        // Attempt to call copy-assignment.
         m_buffer[m_length++] = entry;
         
         // Don't try to dereference unitialized memory and get its address!
@@ -352,9 +372,10 @@ public:
      * @details Similar to C's `realloc`. Cleans up the old memory as well.
      *          Updates internals for you accordingly so you don't have to!
      * 
-     * @param   new_size    Number of elements to increase or decrease by.
+     * @param   new_size    New requested buffer size, may be greater or lesser.
      * 
-     * @warning For strings, this will not guarantee nul termination at all.
+     * @warning For strings, this may not guarantee nul termination. Although we
+     *          do 0-initialize the memory.
      */
     DerivedT &resize(size_t n_newsize) {
         // This is stupid so don't even try :)
@@ -363,7 +384,6 @@ public:
         }
         // Add 1 to copy correct number of elements w/o touching bad memory.
         ElemT *p_dummy = new ElemT[n_newsize + 1];
-        memset(p_dummy, 0, n_newsize + 1);
 
         // Does the new size extend the buffer or not?
         // true:    Use original `m_index` which is the last written element.
@@ -373,8 +393,12 @@ public:
         m_iterator.m_begin = p_dummy;
         m_iterator.m_end = p_dummy + m_length; // past end of new memblock
 
-        // Remember C-style memory manipulation requires size in bytes/chars!
-        memcpy(p_dummy, m_buffer, sizeof(ElemT) * m_length);
+        // We can't rely on memcpy, as when our buffer is of containers,
+        // we'll not call any copy or move assignments and cause double frees!
+        for (size_t i = 0; i < m_length; i++) {
+            // Try to call this object's move assignment.
+            p_dummy[i] = std::move(m_buffer[i]);
+        }
         delete[] m_buffer;
         m_buffer = p_dummy;
         return cast_derived();
@@ -386,26 +410,23 @@ public:
      * 
      * @attention   This can be overriden, e.g. strings set index's value to 0.
      */
-    virtual ElemT pop_back() {
+    ElemT pop_back() {
         return m_buffer[m_length--];
     }
 
     /**
      * @brief   Deletes/frees buffer, resets the index counter and iterators
      * 
-     * @attention   May be overriden if a specialization has different needs.
-     * 
      * @note    `m_capacity` is unaffected. Actually, after freeing the current
      *          buffer, we reallocate fresh memory of the same size!
      */
-    virtual DerivedT &clear() {
+    DerivedT &clear() {
         // Tempting to do away with this, but would leak memory if buffer elems
         // were also dynamically allocated!
         delete[] m_buffer;
-        m_buffer = new ElemT[m_capacity];
-        memset(m_buffer, 0, m_capacity);
+        m_buffer = new ElemT[m_capacity + 1];
         m_length = 0;
-        m_iterator = iterator(m_buffer, m_buffer);
+        m_iterator.set_pointers(m_buffer, m_buffer);
         return cast_derived();
     }
 };

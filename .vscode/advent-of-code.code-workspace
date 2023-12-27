@@ -89,7 +89,8 @@
 			"queue": "cpp",
 			"*.def": "cpp",
 			"*.inc": "cpp",
-			"stack": "cpp"
+			"stack": "cpp",
+			"cstdarg": "cpp"
 		}
 	}
 }
