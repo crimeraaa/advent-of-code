@@ -109,10 +109,11 @@ private:
 protected:
     static constexpr size_t START_CAPACITY = 16;
     static constexpr size_t MAX_LENGTH = 0xFFFFFFFF; // 1-based.
-    size_t m_length; // Number of elements written to buffer currently.
-    size_t m_capacity; // Number of elements that buffer could hold.
-    ElemT *m_buffer; // Heap-allocated 1D array of the specified type.
+    size_t m_length = 0; // Number of elements written to buffer currently.
+    size_t m_capacity = 0; // Number of elements that buffer could hold.
+    ElemT *m_buffer = nullptr; // Heap-allocated 1D array of the specified type.
     iterator<ElemT> m_iterator;
+    // std::allocator<ElemT> m_alloc;
 
     // -------------------- CONSTRUCTORS/DESTRUCTORS ---------------------------
     // NOTICE: These are protected to avoid users calling these by themselves!
@@ -126,8 +127,8 @@ protected:
      */
     base_dyarray() 
         : m_length{0}
-        , m_capacity{START_CAPACITY}
-        , m_buffer{new ElemT[START_CAPACITY]} // calls default constructors
+        , m_capacity{0}
+        , m_buffer{nullptr}
         , m_iterator(m_buffer, m_buffer)
     {}
 
@@ -309,7 +310,7 @@ public:
         return derived_cast();
     }
 
-    DerivedT &move(base_dyarray &src) {
+    DerivedT &move(base_dyarray &&src) {
         // If we try to move ourselves, we'll free the same buffer!
         if (this != &src) {
             delete[] m_buffer; 
@@ -349,7 +350,7 @@ private:
             throw std::length_error("Reached crim::base_dyarray::MAXLENGTH!");
         } else if (m_length + 1 > m_capacity) {
             // All the cool kids seem to grow their buffers by doubling it!
-            resize(m_capacity * 2); 
+            resize((m_capacity == 0) ? 1 : m_capacity * 2); 
         }
 
         assignment_fn(m_buffer[m_length++]);
@@ -434,11 +435,12 @@ public:
 
     /**
      * @brief   Gets the last written element and gives it back to you.
-     *          At the same time, it decrements the internal index counter.
+     *          It decrements the `m_length` counter and `m_end` iterator.
      * 
-     * @attention   This can be overriden, e.g. strings set index's value to 0.
+     * @attention   This can be shadows, e.g. strings set index's value to 0.
      */
     ElemT pop_back() {
+        m_iterator.m_end--;
         return m_buffer[m_length--];
     }
 

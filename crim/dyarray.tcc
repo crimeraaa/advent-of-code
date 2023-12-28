@@ -31,13 +31,13 @@ public:
 
     // Static cast is necessary to call the correct function, otherwise it'll
     // use the one meant for lvalue references!
-    dyarray(dyarray &&src) : base(static_cast<base&&>(src)) {}
+    dyarray(dyarray &&src) : base(std::forward<base>(src)) {}
 
     dyarray &operator=(const dyarray &src) {
         return base::copy(src);
     }
 
     dyarray &operator=(dyarray &&src) {
-        return base::move(src);
+        return base::move(std::forward<base>(src));
     }
 };

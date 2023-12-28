@@ -1,5 +1,6 @@
 # Yank all source files in the current directory
-SRC = $(wildcard *.cpp)
+# SRC = $(wildcard *.cpp)
+SRC = std_readfile.cpp crim_readfile.cpp
 
 # Create a list of binaries, each from its respective source file
 EXE = $(SRC:%.cpp=bin/%)

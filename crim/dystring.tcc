@@ -53,7 +53,7 @@ public:
      *          Upon temporary `src`'s destruction, the memory pointed to by
      *          `src.m_buffer` is not freed, allowing us to keep it around!
      */
-    dystring(dystring &&src) : base(static_cast<base&&>(src)) {
+    dystring(dystring &&src) : base(std::forward<base>(src)) {
         append('\0');
     }
 
@@ -65,7 +65,7 @@ public:
      *          copy over `msg` into the buffer.
      */
     dystring &operator=(const CharT *msg) {
-        dystring tmp = dystring(msg);
+        dystring tmp = msg; // basic constructor
         std::swap(*this, tmp);
         return *this;
     }
@@ -85,7 +85,7 @@ public:
      * 
      */
     dystring &operator=(const dystring &src) {
-        dystring tmp = src;
+        dystring tmp = src; // copy-constructor as to not mess up `src`
         std::swap(*this, tmp.append('\0'));
         return *this;
     }
@@ -110,7 +110,7 @@ public:
      *          this to avoid freeing allocated memory of temporary instances.
      */
     dystring &operator=(dystring &&src) {
-        base::move(src);
+        base::move(std::forward<base>(src));
         return append('\0');
     }
 
@@ -184,6 +184,7 @@ public:
         // Decrement the index so we effectively ignore nul chars in our count.
         base::push_back('\0');
         base::m_length--;
+        base::m_iterator.m_end--; // this was also incremented so decrement it
         return *this;
     }
 };
