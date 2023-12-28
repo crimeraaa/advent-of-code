@@ -160,7 +160,7 @@ public:
      *          which is called in the parent method `base::push_back()`.
      */
     dystring &append(const CharT *msg) {
-        // Don't add 1 so we don't write nul char AND increment index
+        // Don't add 1 to avoid writing nul char and incrementing index both.
         for (size_t i = 0, len = strlen(msg); i < len; i++) {
             base::push_back(msg[i]);
         }
@@ -184,7 +184,7 @@ public:
         // Decrement the index so we effectively ignore nul chars in our count.
         base::push_back('\0');
         base::m_length--;
-        base::m_iterator.m_end--; // this was also incremented so decrement it
+        base::m_iterator.m_end--; // push_back incremented this so decrement it
         return *this;
     }
 };
