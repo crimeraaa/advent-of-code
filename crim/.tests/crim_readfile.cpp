@@ -1,17 +1,24 @@
-#include <crim/dystring.tcc>
-#include <crim/dyarray.tcc>
+/* -*- C -*- */
 #include <stdarg.h>
 #include <stdio.h>
+
+/* -*- C++ -*- */
 #include <type_traits>
 
+/* -*- MY DATA STRUCTURES -*- */
+#include <crim/dystring.tcc>
+#include <crim/dyarray.tcc>
+
+/* -*-  READFILE TEST -*- */
 #include "readfile.hpp"
+/* -*-                -*- */
 
 crim::string readline(FILE *stream) {
     crim::string in_buffer;
     int c;
     // Keep reading input stream until some line-ending character is reached
     while ((c = fgetc(stream)) != EOF && c != '\r' && c != '\n') {
-        in_buffer.push_back((char)c);
+        in_buffer.push_back(static_cast<char>(c));
     }
     // Check for CRLF or lone CR
     if (c == '\r' && (c = fgetc(stream)) != EOF) {
@@ -21,7 +28,9 @@ crim::string readline(FILE *stream) {
             return in_buffer;
         }
     }
-    in_buffer.append('\0');
+    // Moves might optimize out nul char appends, so append this explicitly!
+    // Otherwise Valgrind will catch us trying to read uninitialized memory.
+    in_buffer.append('\0'); 
     return in_buffer; // return-value optimization requires raw returns.
 }
 
@@ -37,7 +46,7 @@ crim::dyarray<crim::string> readfile(const char *fname) {
     crim::dyarray<crim::string> contents;
     FILE *infile = fopen(fname, "r");
     if (infile == NULL) {
-        perror("Could not open requested input file");
+        perror("fopen");
         return contents; // return empty vector
     }
     while (!feof(infile)) {
@@ -52,15 +61,34 @@ crim::dyarray<crim::string> readfile(const char *fname) {
     return contents; // return-value optimization requires raw returns.
 }
 
+void input_test() {
+    auto name = get_string("What's your name? ");
+    auto food = get_string("Hi %s! What's your favorite food? ", name.data());
+    printf("Nice to meet you %s! We both love %s!\n", name.c_str(), food.c_str());
+}
+
+void array_test() {
+    crim::dyarray<crim::string> v;
+    v.push_back("1").push_back("2").push_back("3").push_back("4");
+    v.push_back("5").push_back("6").push_back("7").push_back("8");
+    v.push_back("9").push_back("10").push_back("11").push_back("12");
+    v.push_back("13").push_back("14").push_back("15").push_back("16");
+    v.push_back("17");
+    int padding = get_digits(v.length());
+    for (size_t i = 0; i < v.length(); i++) {
+        printf("%*zu: %s (%p)\n", padding, i + 1, v[i].c_str(), (void*)v[i].data());
+    }
+}
+
 int main(int argc, char *argv[]) {
     (void)argc; (void)argv;
-    crim::string s;
-    crim::dyarray<crim::string> v;
-    // const char *fname = (argc == 2) ? argv[1] : FALLBACK "segfault.txt";
-    // auto contents = readfile(fname);
-    // int padding = get_digits(contents.length());
-    // for (size_t i = 0; i < contents.length(); i++) {
-    //     printf("%*zu: %s\n", padding, i + 1, contents[i].c_str());
-    // }
+    // input_test();
+    array_test();
+    const char *fname = (argc == 2) ? argv[1] : FALLBACK "segfault.txt";
+    auto contents = readfile(fname);
+    int padding = get_digits(contents.length());
+    for (size_t i = 0; i < contents.length(); i++) {
+        printf("%*zu: %s\n", padding, i + 1, contents[i].c_str());
+    }
     return 0;
 }

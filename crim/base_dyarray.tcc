@@ -78,11 +78,11 @@ protected:
     // See: https://www.reddit.com/r/cpp/comments/lhvkzs/comment/gn3nmsx/
 
     // Primary delegated constructor.
-    base_dyarray(size_t n_length, size_t n_capacity, ElemT *p_mem)
+    base_dyarray(size_t n_length, size_t n_capacity, ElemT *p_memory)
     : m_malloc{}
     , m_nlength{n_length}
     , m_ncapacity{n_capacity}
-    , m_pbuffer{p_mem}
+    , m_pbuffer{p_memory}
     , m_iterator(m_pbuffer, m_nlength) 
     {}
 
@@ -148,15 +148,15 @@ protected:
      */
     ~base_dyarray() {
         // Malloc::deallocate doesn't accept nullptr so let's avoid that.
-        if (m_pbuffer == nullptr) {
-            return;
+        // Conditional jump or move depends on uninitizlised value(s)?
+        if (m_pbuffer != nullptr) {
+            // Destroy all constructed objects we have, because memory is hard.
+            for (size_t i = 0; i < length(); i++) {
+                Malloc::destroy(m_malloc, &m_pbuffer[i]);
+            }
+            // Only after instances are destroyed can we get rid of the pointer.
+            Malloc::deallocate(m_malloc, m_pbuffer, capacity());
         }
-        // Destroy all constructed objects we have, because memory is hard.
-        for (size_t i = 0; i < length(); i++) {
-            Malloc::destroy(m_malloc, &m_pbuffer[i]);
-        }
-        // After instances are destroyed then we can get rid of the pointer.
-        Malloc::deallocate(m_malloc, m_pbuffer, capacity());
     }
 
 private:
@@ -326,6 +326,7 @@ public:
         // If we try to move ourselves, we'll destroy the same buffer!
         if (this != &src) {
             // Clear any constructed instances and heap-allocated memory.
+            // Causes a conditional jump/move based on uninitialised value(s)
             this->~base_dyarray();
 
             // Do a shallow copy, since `src` will be destroyed shortly anyway.
@@ -432,9 +433,26 @@ public:
         m_nlength = (n_newsize > m_ncapacity) ? m_nlength : n_newsize;
         m_ncapacity = n_newsize;
 
-        // Move, not copy, previous buffer into current since it's abit faster.
+        /**
+         * @brief   Move, not copy, previous buffer into current since it's a
+         *          lil bit faster.
+         * 
+         * @details p_dummy[i] = std::move(m_pbuffer[i]) isn't enough! Since it,
+         *          p_dummy[i], is uninitialized, calling a move-assignment will 
+         *          read uninitialized memory which Valgrind warns us about.
+         * 
+         *          We *could* use the new and cool C++17 features:
+         *          `std::uninitialized_move(begin(), end(), p_dummy)`
+         *          `std::uninitialized_move_n(begin(), length(), p_dummy)`
+         * 
+         * @note    It turns out that in the definition for Malloc::construct(),
+         *          the 3rd parameter is actually varargs which serve as the 
+         *          instance's constructor arguments. 
+         * 
+         *          Here, we (probably) want to force the move-constructor.
+         */
         for (size_t i = 0; i < m_nlength; i++) {
-            p_dummy[i] = std::move(m_pbuffer[i]);
+            Malloc::construct(m_malloc, &p_dummy[i], std::move(m_pbuffer[i]));
         }
 
         // Since previous contents were moved no need to explicitly destroy
