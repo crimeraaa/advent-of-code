@@ -7,7 +7,7 @@
             "_UNICODE"
         ],
         "myIncludePaths": [
-            "${fileDirname}",
+            // "${fileDirname}", // doesn't work it seems
             "${workspaceFolder}"
         ]
     },
