@@ -73,7 +73,7 @@ namespace crim {
             return copy(src);
         }
 
-        /* -*- ---***--- -*- ITERATOR POINTER ACCESS METHODS -*- ---***--- -*- */
+        /* -*- ITERATOR POINTER ACCESS METHODS -*- */
         // const functions so both const and non-const instances can use these.
 
         ElemT *begin() const { 

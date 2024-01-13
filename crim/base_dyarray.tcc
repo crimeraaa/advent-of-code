@@ -1,15 +1,17 @@
 #pragma once
-/*- -*- ---***--- -*-        THE C STANDARD LIBRARY       -*- ---***---  -*- -*/
+
+/*- -*-  THE C STANDARD LIBRARY -*- -*/
 #include <stddef.h>
 #include <string.h>
-/*- -*- ---***--- -*-       THE C++ STANDARD LIBRARY      -*- ---***---  -*- -*/
+
+/*- -*-  THE C++ STANDARD LIBRARY -*- -*/
 #include <algorithm>
 #include <initializer_list>
 #include <stdexcept>
 #include <functional>
-/*- -*- ---***--- -*-    REINVENTING THE WHEEL LIBRARY    -*- ---***---  -*- -*/
+
+/*- -*-  REINVENTING THE WHEEL LIBRARY -*- -*/
 #include "iterator.tcc"
-/*- -*- ---***--- -*-                                     -*- ---***---  -*- -*/
 
 /**
  * @brief   Classes that inherit from parents can be forward declared, but the
@@ -73,7 +75,7 @@ protected:
     ElemT *m_pbuffer; // Heap-allocated 1D array of the specified type.
     iterator<ElemT> m_iterator;
 
-    /* -*- ---***--- -*-      CONSTRUCTORS, DESTRUCTORS     -*- ---***--- -*- */
+    /* -*-  CONSTRUCTORS, DESTRUCTORS -*- */
     // NOTICE: These are protected to avoid users calling these by themselves!
     // See: https://www.reddit.com/r/cpp/comments/lhvkzs/comment/gn3nmsx/
 
@@ -176,7 +178,7 @@ private:
     }
 
 public:
-    /* -*- ---***--- -*-   NON-CONST DATA ACCESS METHODS    -*- ---***--- -*- */
+    /* -*-  NON-CONST DATA ACCESS METHODS -*- */
 
     /**
      * @brief   Read-write element access from the internal buffer.
@@ -214,7 +216,7 @@ public:
         return m_pbuffer;
     }
 
-    /* -*- ---***--- -*-     CONST DATA ACCESS METHODS      -*- ---***--- -*- */
+    /* -*-  CONST DATA ACCESS METHODS -*- */
 
     /** 
      * @brief   See if begin and end iterators point to the exact same address. 
@@ -262,7 +264,7 @@ public:
         return m_pbuffer;
     }
 
-    /* -*- ---***--- -*-              ITERATORS             -*- ---***--- -*- */
+    /* -*-  ITERATORS -*- */
 
     /**
      * @brief   Get a read-write iterator that points to the very first element
@@ -300,7 +302,7 @@ public:
         return m_iterator.end();
     }
 
-    /* -*- ---***--- -*-      DATA COPYING AND MOVEMENT     -*- ---***--- -*- */
+    /* -*-  DATA COPYING AND MOVEMENT -*- */
     // Assignment operator overloads cannot be called from the child directly. 
     // You'll need a wrapper like `crim::string &operator=(crim::string &&src)`.
 
@@ -342,7 +344,7 @@ public:
     }
 
 public:
-    /* -*- ---***--- -*-        BUFFER MANIPULATION         -*- ---***--- -*- */
+    /* -*-  BUFFER MANIPULATION -*- */
 
     /**
      * @brief   Moves `entry` to the top of the internal buffer. That is, it is 

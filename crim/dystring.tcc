@@ -1,7 +1,6 @@
 #pragma once
-/*- -*- ---***--- -*-    REINVENTING THE WHEEL LIBRARY    -*- ---***---  -*- -*/
+/*- -*- REINVENTING THE WHEEL LIBRARY -*- -*/
 #include "base_dyarray.tcc"
-/*- -*- ---***--- -*-                                     -*- ---***---  -*- -*/
 
 namespace crim {
     /**
@@ -19,7 +18,7 @@ private:
     // Use this for quick access to base's methods and casts to the base class.
     using base = base_dyarray<dystring<CharT>, CharT>;
 public:
-    /* -*- ---***--- -*-      CONSTRUCTORS, DESTRUCTORS     -*- ---***--- -*- */
+    /* -*- CONSTRUCTORS, DESTRUCTORS -*- */
 
     /**
      * @brief   Appends `msg` to the already-allocated internal buffer.
@@ -58,7 +57,7 @@ public:
         append('\0');
     }
 
-    /* -*- ---***--- -*-       ASSIGNMENT OPERATORS         -*- ---***--- -*- */
+    /* -*- ASSIGNMENT OPERATORS -*- */
 
     /**
      * @brief   Instance reassignment. If you reassign an instance to a new 
@@ -123,7 +122,7 @@ public:
         return append(src.c_str());
     }
 
-    /* -*- ---***--- -*-       DATA ACCESS OPERATIONS       -*- ---***--- -*- */
+    /* -*- DATA ACCESS OPERATIONS -*- */
     
     /**
      * @brief   Read-only nul-terminated C-string for you to print out.
@@ -136,7 +135,7 @@ public:
         return base::data();
     }
 
-    /* -*- ---***--- -*-      STRING WRITING FUNCTIONS      -*- ---***--- -*- */
+    /* -*- STRING WRITING FUNCTIONS -*- */
 
     /**
      * @brief   Removes the most recently written element from the buffer.
@@ -191,7 +190,7 @@ public:
 };
 
 namespace crim {
-    /* -*- ---***--- -*-       TEMPLATE INSTANTIATIONS      -*- ---***--- -*- */
+    /* -*- TEMPLATE INSTANTIATIONS -*- */
 
     // C-style dynamic string (basic character array container).
     using string = dystring<char>;
