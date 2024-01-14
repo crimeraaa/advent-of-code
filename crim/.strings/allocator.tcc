@@ -1,12 +1,21 @@
 /* -*- C STANDARD LIBRARY -*- */
-#include <stdlib.h>
+#include <cstdlib> /* std::malloc, std::free */
 
 /* -*- C++ STANDARD LIBRARY -*- */
-#include <stdexcept>
+#include <stdexcept> /* std::out_of_range */
+#include <new> /* std::bad_array_new_length, std::bad_alloc */
+
+/* -*- CRIM "LIBRARY" -*- */
+#include "logerror.hpp"
+
+#define crim_allocator_logerror(fn, info) \
+    crim_logerror("crim::allocator<T>::" fn, info)
 
 namespace crim {
-    // Custom allocator to be used by std::allocator traits.
-    // https://learn.microsoft.com/en-us/cpp/standard-library/allocators?view=msvc-170#writing-your-own-allocator-c11
+    /**
+     * Custom allocator to be used by `std::allocator_traits`. 
+     *  - https://learn.microsoft.com/en-us/cpp/standard-library/allocators?view=msvc-170#writing-your-own-allocator-c11k
+     */
     template<class ElemT> struct allocator;
 };
 
@@ -34,41 +43,53 @@ template<class ElemT> struct crim::allocator {
     */
     ElemT *allocate(size_t n_count) const {
         if (!is_valid_size(n_count)) {
-            return (n_count == 0) ? nullptr : throw std::bad_array_new_length();
+            // This may be a bad idea, std::allocator doesn't do this.
+            if (n_count == 0) {
+                return nullptr; 
+            }
+            crim_allocator_logerror("allocate", "requested too much memory!");
+            throw std::bad_array_new_length();
         }
         // Running out of memory IS an exceptional situation.
         //  - https://stackoverflow.com/a/4827445
-        void *p_memory = malloc(sizeof(ElemT) * n_count);
+        void *p_memory = std::malloc(sizeof(ElemT) * n_count);
         if (p_memory == nullptr) {
+            crim_allocator_logerror("allocate", "failed to allocate memory!");
             throw std::bad_alloc();
         }
         return static_cast<ElemT*>(p_memory); 
     }
     
-    // Double colons before `new` ensures we resolve from the global namespace.
-    // Using placement new, we can construct an object in allocated memory.
-    //  - https://en.cppreference.com/w/cpp/memory/allocator_traits/construct
-    //  - https://en.cppreference.com/w/cpp/memory/allocator/construct
+    /** 
+     * Double colons before `new` ensures we resolve from global namespace.
+     * With placement new, we can construct objects in allocated memory blocks. 
+     *  - https://en.cppreference.com/w/cpp/memory/allocator_traits/construct 
+     *  - https://en.cppreference.com/w/cpp/memory/allocator/construct 
+     */
     template<class CtorT, class ...Args>
     void construct_at(CtorT *p_memory, Args &&...args) const {
         ::new (static_cast<void*>(p_memory)) ElemT(std::forward<Args>(args)...);
     }
 
     /** 
-     * @brief   Destructors can be called on *type-names*, not fundamental types.
-     *
-     * @details Typedefs & template parameters of fundamental types are OK.
-     *          but not destructing fundamental types themselves. 
-     *          `p_memory->~int()` is not allowed but `p_memory->~ElemT()` is. 
-     *          See: https://en.cppreference.com/w/cpp/memory/destroy_at 
+     * Destructors can be called on *type-names*, but not on fundamental types.
+     * Typedefs & template parameters of fundamental types are OK. However, 
+     * calling destructors on fundamental types themselves isn't. 
+     * ```cpp
+     * p_memory->~int(); // is not allowed 
+     * p_memory->~ElemT(); // is allowed
+     * ```
+     *  - https://en.cppreference.com/w/cpp/memory/destroy_at 
      */
     template<class DtorT>
     void destroy_at(DtorT *p_memory) const {
-        p_memory->~DtorT();
+        p_memory->~DtorT(); // For fundamentals types this is just a no-op.
     }
-
+    
     void deallocate(ElemT *p_memory, size_t n_count) const noexcept {
         (void)n_count; // The signature is needed but we don't need n_count.
-        free(p_memory);
+        std::free(p_memory);
     }
 };
+
+#undef crim_allocator_logerror

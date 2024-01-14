@@ -3,14 +3,13 @@
 #define __USE_MINGW_ANSI_STDIO 1
 #endif
 
-#include <stdio.h>
+#include <cstdio>
+#include <string>
 #include "allocator.tcc"
-
-static constexpr size_t BUFFER_SIZE = 0;
 
 class genarray {
 private:
-    using ElemT = int;
+    using ElemT = std::string;
     using AllocT = crim::allocator<ElemT>;
 private:
     AllocT m_malloc;
@@ -33,14 +32,14 @@ public:
     
     void print() {
         for (size_t i = 0; i < m_ncount; i++) {
-            printf("genarray[%zu]: %i\n", i, m_pbuffer[i]);
+            std::printf("genarray[%zu]: %s\n", i, m_pbuffer[i].c_str());
         }
-        printf("\n");
+        std::printf("\n");
     }
     
     void test() {
         for (size_t i = 0; i < m_ncapacity; i++) {
-            m_malloc.construct_at(&m_pbuffer[m_ncount++], (int)i + 1);
+            m_malloc.construct_at(&m_pbuffer[m_ncount++], "0123456789abcdef");
         }
     }
 };

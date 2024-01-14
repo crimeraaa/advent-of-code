@@ -76,7 +76,7 @@ public:
     void at(size_t n_index, void *p_dest) {
         // m_ncount itself is 1 past the most recently written element.
         if (n_index >= m_ncount) {
-            ga_logerror("at", "invalid index");
+            crim_allocator_logerror("at", "invalid index");
             return;
         }
         copy_to(p_dest, get_address_of(n_index));
