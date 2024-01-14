@@ -10,6 +10,7 @@ void cs_test(const cstring &inst) {
     printf("\n");
 }
 
+// TODO: Make more robust
 int main() {
     cstring cs = "Hi mom!";
     cstring cs2 = "This is a very long string that should cause allocations.";

@@ -1,7 +1,12 @@
-#include <stdexcept>
+// -*- C -*-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
+// -*- C++ -*-
+#include <stdexcept>
+#include <memory>
+#include <new>
 
 class cstring {
 private:
@@ -26,15 +31,14 @@ public:
 
     // Add 1 to the strlen as it doesn't count the nul terminating character. 
     cstring(const char *p_string) : cstring(strlen(p_string)) {
-        // Generalize our target so we don't write memcpy twice.
-        char *p_buffer = m_stackbuf;
+        char *p_buffer = m_stackbuf; // Avoid writing memcpy twice.
         size_t n_bytes = sizeof(char) * (m_ncapacity + 1);
         // Switch the active union member if needed.
         if (!is_short_string()) {
             // Set count to capacity as that's in bounds while bytes isn't.
             m_heapbuf = {(char*)malloc(n_bytes), m_ncapacity};
             if (m_heapbuf.p_memory == nullptr) {
-                return; // TODO: Handle properly... somehow
+                throw std::bad_alloc();
             }
             p_buffer = m_heapbuf.p_memory;
         } 
