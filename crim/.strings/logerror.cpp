@@ -6,22 +6,22 @@ void delta() {
         throw std::runtime_error("Oooooooohhhh! An error!!!!");
     } catch (const std::runtime_error &err) {
         crim_logger_fn(err.what());
-        crim_logerror("delta", "caught an error!");
+        crim_allocator_logerror("delta", "caught an error!");
     }    
 }
 
 void charlie() {
-    crim_logerror("charlie", "tres");
+    crim_allocator_logerror("charlie", "tres");
     delta();
 }
 
 void bravo() {
-    crim_logerror("bravo", "dos");
+    crim_allocator_logerror("bravo", "dos");
     charlie();
 }
 
 void alpha() {
-    crim_logerror("alpha", "uno");
+    crim_allocator_logerror("alpha", "uno");
     bravo();
 }
 

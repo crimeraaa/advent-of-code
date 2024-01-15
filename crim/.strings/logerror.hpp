@@ -41,27 +41,39 @@
 
 #if defined(CRIM_LOGERROR_USE_STDERR) || !defined(CRIM_LOGERROR_USE_CERR)
 #include <cstdio>
-static inline void crim_logerror_cstdio(const char *p_errmsg) {
-    std::fprintf(stderr, "%s\n", p_errmsg);
-}
-#define crim_logger_fn(message) crim_logerror_cstdio(message)
+namespace crim {
+    void logerror(
+        const char *file, 
+        int line, 
+        const char *name, 
+        const char *func, 
+        const char *info
+    ) {
+        std::fprintf( stderr, 
+            "%s:%i:\n"
+            "\t%s::%s(): %s\n", 
+            file, line, 
+            name, func, info
+        );
+    }
+};
 #else 
 #include <iostream>
-static inline void crim_logerror_stdcerr(const char *p_errmsg) {
-    std::cerr << p_errmsg << "\n";
+namespace crim {
+    
 }
-#define crim_logger_fn(message) crim_logerror_stdcerr(message)
 #endif
 
 /**
  * @brief   Print a pretty-printed error message to `stderr` or `std::cerr`.
- *          The error message includes the file name and line number.
+ *          The error message includes file name, line number and function name.
  *
- * @param   fn      Function name that `__func__` would contain.
+ * @param   scope   Class name, template, other namespace, etc. Can be empty.
  * @param   info    Some extra messages/info you'd like to send out.
  * 
  * @note    By default, we use `std::fputs` and `stderr`. 
  *          To use `std::cerr`, define the `CRIM_LOGERRROR_USE_CERR` macro
  *          before including this header.
  */
-#define crim_logerror(fn, info) crim_logger_fn(crim_make_logmsg(fn, info))
+#define crim_logerror(scope, info) \
+    crim::logerror(__FILE__, __LINE__, "crim::" scope, __func__, info)

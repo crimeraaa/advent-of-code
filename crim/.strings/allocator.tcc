@@ -1,15 +1,16 @@
-/* -*- C STANDARD LIBRARY -*- */
+#pragma once
+
+// -*- C STANDARD LIBRARY -*-
 #include <cstdlib> /* std::malloc, std::free */
 
-/* -*- C++ STANDARD LIBRARY -*- */
+// -*- C++ STANDARD LIBRARY -*-
 #include <stdexcept> /* std::out_of_range */
 #include <new> /* std::bad_array_new_length, std::bad_alloc */
 
-/* -*- CRIM "LIBRARY" -*- */
+// -*- CRIM "LIBRARY" -*-
 #include "logerror.hpp"
 
-#define crim_allocator_logerror(fn, info) \
-    crim_logerror("crim::allocator<T>::" fn, info)
+#define crim_allocator_logerror(info) crim_logerror("allocator<T>", info)
 
 namespace crim {
     /**
@@ -47,14 +48,14 @@ template<class ElemT> struct crim::allocator {
             if (n_count == 0) {
                 return nullptr; 
             }
-            crim_allocator_logerror("allocate", "requested too much memory!");
+            crim_allocator_logerror("requested too much memory!");
             throw std::bad_array_new_length();
         }
         // Running out of memory IS an exceptional situation.
         //  - https://stackoverflow.com/a/4827445
         void *p_memory = std::malloc(sizeof(ElemT) * n_count);
         if (p_memory == nullptr) {
-            crim_allocator_logerror("allocate", "failed to allocate memory!");
+            crim_allocator_logerror("failed to allocate memory!");
             throw std::bad_alloc();
         }
         return static_cast<ElemT*>(p_memory); 
@@ -70,9 +71,15 @@ template<class ElemT> struct crim::allocator {
     void construct_at(CtorT *p_memory, Args &&...args) const {
         ::new (static_cast<void*>(p_memory)) ElemT(std::forward<Args>(args)...);
     }
+    
+    // Construct at uses placement new. For trivials it's just a copy.
+    void copy(ElemT *p_dest, const ElemT *p_src, size_t n_count) {
+        for (size_t i = 0; i < n_count; i++) {
+            construct_at(&p_dest[i], p_src[i]);
+        }
+    }
 
     /** 
-     * Destructors can be called on *type-names*, but not on fundamental types.
      * Typedefs & template parameters of fundamental types are OK. However, 
      * calling destructors on fundamental types themselves isn't. 
      * ```cpp
@@ -86,8 +93,15 @@ template<class ElemT> struct crim::allocator {
         p_memory->~DtorT(); // For fundamentals types this is just a no-op.
     }
     
+    void yeet(ElemT *p_memory, size_t n_count) {
+        for (size_t i = 0; i < n_count; i++) {
+            destroy_at(&p_memory[i]);
+        }
+    }
+    
+    // Could destroy all elements here but I don't like hidden control flow.
     void deallocate(ElemT *p_memory, size_t n_count) const noexcept {
-        (void)n_count; // The signature is needed but we don't need n_count.
+        (void)n_count; // Signature needed by std::allocator, but we don't need.
         std::free(p_memory);
     }
 };
