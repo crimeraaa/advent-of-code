@@ -1,4 +1,4 @@
-SRC := allocator.cpp
+SRC := input.cpp
 EXE := $(SRC:%.cpp=%)
 BIN := $(SRC:%.cpp=bin/%)
 INCLUDE := $(wildcard *.hpp *.tcc)
