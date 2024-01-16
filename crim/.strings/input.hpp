@@ -9,38 +9,40 @@
 #include <new>
 
 #include "logerror.hpp"
-#include "allocator.tcc"
+#include "memory.tcc"
 #include "base_string.tcc"
 
-#define crim_input_logerror(info) crim_logerror("", info)
+// Don't forget to `#undef` this at the end of this file, others need it!
+#define crim_logerror(func, info) crim_logerror_nofunc("crim", func, info)
 
 namespace crim {
-    bool isendl(int ch) {
+    bool isendl(int ch) noexcept {
         return ch == '\r' || ch == '\n';
     }
     
     bool readcrlf(std::FILE *p_stream, int ch) {
         if (ch == '\r' && (ch = std::fgetc(p_stream)) != EOF) {
             if (ch != '\n' && std::ungetc(ch, p_stream) == EOF) {
-                crim_input_logerror("std::ungetc() failed!");
+                crim_logerror("readcrlf", "std::ungetc() failed!");
                 return false;
             }
         }
         return true;
     }
     
+    // TODO: Clear stdin stream on errors
     cstring readline(std::FILE *p_stream) {
         cstring input;
         int ch;
 
         while ((ch = std::fgetc(p_stream)) != EOF && !isendl(ch)) {
             if (!input.push_back(static_cast<char>(ch))) {
-                crim_input_logerror("input.push_back() failed!");
+                crim_logerror("readline", "input.push_back() failed!");
                 break;
             }    
         } 
         if (!readcrlf(p_stream, ch)) {
-            crim_input_logerror("crim::readcrlf() failed!");
+            crim_logerror("readline", "crim::readcrlf() failed!");
         }
         return input;
     }
@@ -54,3 +56,4 @@ namespace crim {
     }
 };
 
+#undef crim_logerror
