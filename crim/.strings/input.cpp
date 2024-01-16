@@ -68,14 +68,17 @@ namespace test {
         move_long();
     }
     
-    void get_string() {
-        auto name = crim::get_string("Enter your name: ");
+    void test_get_string() {
+        using crim::get_string;
+        auto name = get_string("Enter your name: ");
+        auto food = get_string("Hi %s! What's your favorite food? ", name.c_str());
         print_what(name);
+        print_what(food);
     }
 }
 
 int main() {
     test::run_tests();
-    // test::get_string();
+    test::test_get_string();
     return 0;
 }
