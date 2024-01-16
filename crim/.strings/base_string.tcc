@@ -67,28 +67,24 @@ public:
         , m_ncount{n_length}
     {}
 
-    // TODO: create my own char_traits  
     base_string(const CharT *p_literal) : base_string(std::strlen(p_literal))
     {
-        isshort() ? copy_short(p_literal) : copy_long(p_literal);
+        // TODO: create my own char_traits  
+        copy_instance(p_literal);
     }
 
-    // Copy-constructor, does a deep copy of `other`'s buffer.
-    base_string(const base_string &other) : base_string(other.length())
-    {
-        copy_instance(other);
-    }
+    base_string(const base_string &other) : base_string(other.c_str())
+    {}
     
-    // Move-constructor. Takes "ownership" of `rvalue`'s pointers, if any.
     base_string(base_string &&rvalue) : base_string(rvalue.length())
     {
         // Named parameters which are rvalue refs "decays" to lvalue ref.
         move_instance(std::move(rvalue)); 
     }
     
-    // If we're a short string, we don't need to deallocate anything.
     ~base_string()
     {
+        // If we're a short string, we don't need to deallocate anything.
         if (isshort()) {
             return;
         }
@@ -113,9 +109,8 @@ private:
         m_memory.copy(m_data.heapbuf.ptr, p_src, m_data.heapbuf.capacity);
     }
 
-    void copy_instance(const base_string &r_src)
+    void copy_instance(const CharT *p_data)
     {
-        const CharT *p_data = r_src.data();
         r_src.isshort() ? copy_short(p_data) : copy_long(p_data);
     }
     
