@@ -1,11 +1,11 @@
 #pragma once
 
-#include <cstring>
-#include <climits>
-
-#include <algorithm>
+#include <cstring> /* std::strlen */
+#include <algorithm> /* std::move */
+#include <stdexcept> /* std::out_of_range */
 
 #include "memory.tcc"
+#include "bitmanip.hpp"
 
 #define crim_logerror(func, info) \
     crim_logerror_nofunc("crim::base_string<T>", func, info)
@@ -24,9 +24,10 @@ namespace crim {
 template<class CharT, class AllocT> 
 class crim::base_string {
 private:
+    using value_type = typename AllocT::value_type;
     using size_type = typename AllocT::size_type;
     
-    AllocT m_memory; // Abstracts away memory-related business.
+    AllocT m_memory; 
 
     /** 
      * Anonymous unions expose their members to the enclosing scope.
@@ -34,24 +35,21 @@ private:
      * Either the union type or the union instance need to be named.
      *  - https://stackoverflow.com/a/28820862
      */
-    union {
-        struct {CharT *ptr; size_type capacity;} heapbuf;
-        CharT stackbuf[sizeof(heapbuf)] = {0};
+    union databuf {
+        struct heapbuf {
+            CharT *ptr; 
+            size_type cap;
+        } heap;
+        CharT stack[sizeof(heap)] = {0};
     } m_data;
-    size_type m_ncount = 0; // Current number of non-nul characters.
+    size_type m_ncount{0}; 
 
     // w/o explicit "cast", would get the following error:
     // "enumerated and non-enumerated type in conditional expression"
     // for `capacity()`.
     enum limit : size_type {
-        // Number of elements that `stackbuf` can hold: likely 16 `CharT`'s.
-        stackbuf_cap = sizeof(m_data.stackbuf) / sizeof(CharT),
-
-        // Last valid index into stackbuf, after this we should use heapbuf.
-        stackbuf_end = stackbuf_cap - 1,
-
-        // Heapbuf's initial allocated size: likely 32 `CharT`'s.
-        heapbuf_cap = stackbuf_cap * 2
+        stack_max_cap = sizeof(m_data.stack) / sizeof(CharT),
+        heap_init_cap = stack_max_cap * 2
     };
 
     // Primarily used to access const overloads with non-const `this`. 
@@ -61,22 +59,25 @@ private:
     }
     
 public: 
-    base_string(size_type n_length = 0) 
+    base_string(size_type n_length = 0) noexcept
         : m_memory{}
         , m_data{}
         , m_ncount{n_length}
     {}
 
-    base_string(const CharT *p_literal) : base_string(std::strlen(p_literal))
+    base_string(const CharT *p_literal) 
+        : base_string(std::strlen(p_literal))
     {
         // TODO: create my own char_traits  
-        copy_instance(p_literal);
+        copy_c_string(p_literal);
     }
 
-    base_string(const base_string &other) : base_string(other.c_str())
+    base_string(const base_string &other) 
+        : base_string(other.c_str())
     {}
     
-    base_string(base_string &&rvalue) : base_string(rvalue.length())
+    base_string(base_string &&rvalue) 
+        : base_string(rvalue.length())
     {
         // Named parameters which are rvalue refs "decays" to lvalue ref.
         move_instance(std::move(rvalue)); 
@@ -89,32 +90,34 @@ public:
             return;
         }
         for (size_type i = 0; i < m_ncount; i++) {
-            m_memory.destroy(&m_data.heapbuf.ptr[i]);
+            m_memory.destroy(&m_data.heap.ptr[i]);
         }
-        m_memory.deallocate(m_data.heapbuf.ptr, m_data.heapbuf.capacity);
+        m_memory.deallocate(m_data.heap.ptr, m_data.heap.cap);
     }
 
 private:
     void copy_short(const CharT *p_literal)
     {
         // Add 1 to the count so we also copy the nul char.
-        m_memory.copy(m_data.stackbuf, p_literal, m_ncount + 1);
+        m_memory.uninitialized_copy(m_data.stack, p_literal, m_ncount + 1);
     }
     
     void copy_long(const CharT *p_src)
     {
         // Add 1 to count to also copy nul char from the literal.
-        m_data.heapbuf.capacity = m_ncount + 1;
-        m_data.heapbuf.ptr = m_memory.allocate(m_data.heapbuf.capacity);
-        m_memory.copy(m_data.heapbuf.ptr, p_src, m_data.heapbuf.capacity);
+        // For long strings, we only start allocations by powers of 2.
+        m_data.heap.cap = {crim::digits::bit_next_power(m_ncount + 1)};
+        m_data.heap.ptr = m_memory.allocate(m_data.heap.cap);
+        m_memory.uninitialized_copy(m_data.heap.ptr, p_src, m_data.heap.cap);
     }
 
-    void copy_instance(const CharT *p_data)
+    void copy_c_string(const CharT *p_data)
     {
-        r_src.isshort() ? copy_short(p_data) : copy_long(p_data);
+        // For copy-ctor, since we copied other's length this should be OK.
+        isshort() ? copy_short(p_data) : copy_long(p_data);
     }
     
-    // We "take ownership" of `rvalue`'s heapbuf if it's been allocated.
+    // We "take ownership" of `rvalue`'s m_data.heap.ptr if it's been allocated.
     // This is so `rvalue`'s pointers aren't freed on destruction.
     void move_instance(base_string &&rvalue)
     {
@@ -122,12 +125,12 @@ private:
             copy_short(rvalue.c_str());
             return;
         }
-        m_data.heapbuf.capacity = rvalue.capacity();
-        m_data.heapbuf.ptr = rvalue.data();
-        // Rvalue should now use stackbuf, which is all 0's.
+        m_data.heap.cap = rvalue.capacity();
+        m_data.heap.ptr = rvalue.data();
+        // rvalue should now use stack, which is all 0's.
         rvalue.m_ncount = 0;
-        rvalue.m_data.heapbuf.ptr = nullptr;
-        rvalue.m_data.heapbuf.capacity = 0;
+        rvalue.m_data.heap.ptr = nullptr;
+        rvalue.m_data.heap.cap = 0;
     }
 
 public: 
@@ -138,7 +141,7 @@ public:
             crim_logerror("at", "Requested an invalid index!");
             throw std::out_of_range("See log message.");
         }
-        return isshort() ? m_data.stackbuf[n_index] : m_data.heapbuf.ptr[n_index];
+        return isshort() ? m_data.stack[n_index] : m_data.heap.ptr[n_index];
     }
     
     // Read-write element access.
@@ -150,17 +153,21 @@ public:
     }
     
 
-    // Check if we're a short string, in which case we're using `stackbuf`.
-    // Inside of `push_back`, we use a slightly different check.
+    /**
+     * @brief   Check if we're still a short string. In that case we're still 
+     *          using the `stack` union array.
+     *          Inside of `push_back()`, we use a slightly different check.
+     * 
+     * @note    `m_ncount` of 15 and/or 16 are still short strings.
+     *          But if `m_ncount == 16` and then we do a push_back, we need to 
+     *          init `m_data.heap`. 
+     */
     bool isshort() const noexcept
     {
-        // Stupid but this should solve the off by 1 error we had,
-        // Since m_ncount of 15 OR 16 are still short strings,
-        // But if m_ncount == 16 and we do a push_back, we init heapbuf.
-        return m_ncount <= limit::stackbuf_cap;
+        return m_ncount <= limit::stack_max_cap;
     }
     
-    // Number of `CharT`'s in either `stackbuf` or `heapbuf`.
+    // Count of non-nul `CharT`'s we're currently storing.
     size_type length() const noexcept
     {
         return m_ncount;
@@ -169,93 +176,96 @@ public:
     // Includes allocated capacity for the terminating nul character.
     size_type capacity() const noexcept
     {
-        return isshort() ? limit::stackbuf_cap : m_data.heapbuf.capacity;
+        return isshort() ? limit::stack_max_cap : m_data.heap.cap;
     }
 private:
-    // TODO: maybe we can be a bit smart with this and use a local instance.
-    bool init_heapbuf()
+    /**
+     * @brief   Valgrind shows that a local instance uses a little bit more
+     *          memory than an array of known size. Hmm...
+     */
+    bool init_heap()
     {
         // Copy-by-value on the old data first.
-        CharT p_prevdata[limit::stackbuf_cap];
-        m_memory.copy(p_prevdata, m_data.stackbuf, limit::stackbuf_cap);
+        CharT p_prevdata[limit::stack_max_cap];
+        m_memory.uninitialized_copy(p_prevdata, m_data.stack, limit::stack_max_cap);
 
         // Careful: now assigning the active union members!
-        m_data.heapbuf.capacity = limit::heapbuf_cap;
-        m_data.heapbuf.ptr = m_memory.allocate(m_data.heapbuf.capacity);
+        m_data.heap.cap = limit::heap_init_cap;
+        m_data.heap.ptr = m_memory.allocate(m_data.heap.cap);
 
         // To be handled elsewhere, but do log the error.
-        if (m_data.heapbuf.ptr == nullptr) {
-            crim_logerror("init_heapbuf", "m_memory.allocate() failed!");
+        if (m_data.heap.ptr == nullptr) {
+            crim_logerror("init_heap", "m_memory.allocate() failed!");
             return false;
         }
 
-        m_memory.copy(m_data.heapbuf.ptr, p_prevdata, m_ncount);
+        m_memory.uninitialized_copy(m_data.heap.ptr, p_prevdata, m_ncount);
         return true;
     }
 public:
-    // TODO: When shortening the buffer, check if we need to use stackbuf
+    // TODO: When shortening the buffer, check if we need to use stack
     bool resize(size_type n_newcap) 
     {
         // Don't do anything so we don't waste our time.
-        if (n_newcap == m_data.heapbuf.capacity) {
+        if (n_newcap == m_data.heap.cap) {
             return true;
         }
 
         // When shortening the buffer, we want to copy less elements.
-        if (n_newcap < m_data.heapbuf.capacity) {
+        if (n_newcap < m_data.heap.cap) {
             m_ncount = n_newcap;
         }
 
         // I do it this way because C++ is hell bent on casting hell.
-        size_type n_alloc = sizeof(*m_data.heapbuf.ptr) * n_newcap;
+        size_type n_alloc{sizeof(*m_data.heap.ptr) * n_newcap};
         CharT *p_dummy = m_memory.allocate(n_alloc);
         if (p_dummy == nullptr) {
             crim_logerror("resize", "m_memory.allocate() returned a nullptr!");
             return false;
         }
-        m_memory.copy(p_dummy, m_data.heapbuf.ptr, m_ncount);
+        m_memory.uninitialized_copy(p_dummy, m_data.heap.ptr, m_ncount);
 
         // Switcharoo and cleanup.
         p_dummy[m_ncount] = '\0';
-        m_memory.deallocate(m_data.heapbuf.ptr, m_data.heapbuf.capacity);
-        m_data.heapbuf.ptr = p_dummy;
-        m_data.heapbuf.capacity = n_newcap;
+        m_memory.deallocate(m_data.heap.ptr, m_data.heap.cap);
+        m_data.heap.ptr = p_dummy;
+        m_data.heap.cap = n_newcap;
         return true;            
     }
 
-    // For stackbuf, all the data is 0-initialized so we just append `ch`.
-    // But for heapbuf, we constantly also append a nul char after `ch`.
+    // For stack, all the data is 0-initialized so we just append `ch`.
+    // But for `m_data.hea`p, we constantly also append a nul char after `ch`.
     bool push_back(CharT ch)
     {
-        // Can't use isshort() due to off by 1, since once we need to write
-        // to the 16th index we need to start the heapbuf.
-        if (m_ncount < limit::stackbuf_cap) {
-            m_data.stackbuf[m_ncount++] = ch;
+        // Can't use `isshort()` due to off by 1, since once we need to write
+        // to the 16th index we also need to start `m_data.heap.ptr`.
+        if (m_ncount < limit::stack_max_cap) {
+            m_data.stack[m_ncount++] = ch;
             return true;
         }
-        // Initialize heapbuf exactly once, after this `isshort()` == false.
-        if (m_ncount == limit::stackbuf_cap) {
-            if (init_heapbuf() == false) {
-                crim_logerror("push_back", "init_heapbuf() failed!");
+        // Initialize `m_data.heap` only once, after this `isshort() == false`.
+        if (m_ncount == limit::stack_max_cap) {
+            if (init_heap() == false) {
+                crim_logerror("push_back", "init_heap() failed!");
                 return false;
             }
         }
         // Check for enough allocated memory, if not then grow buffer by 2.
-        if (m_ncount + 1 >= m_data.heapbuf.capacity) {
-            if (resize(m_data.heapbuf.capacity * 2) == false) {
+        if (m_ncount + 1 >= m_data.heap.cap) {
+            if (resize(m_data.heap.cap * 2) == false) {
                 crim_logerror("push_back", "resize() failed!");
                 return false;
             }
         }
-        // Since heapbuf has uninitialized memory, we also append nul char.
-        m_data.heapbuf.ptr[m_ncount++] = ch;
-        m_data.heapbuf.ptr[m_ncount] = static_cast<CharT>('\0');
+        // `m_data.heap.ptr` has uninitialized memory, need to append nul char.
+        m_memory.construct(&m_data.heap.ptr[m_ncount++], ch);
+        m_memory.construct(&m_data.heap.ptr[m_ncount], '\0');
         return true;
     }
     
     const CharT *data() const noexcept
     {
-        return isshort() ? m_data.stackbuf : m_data.heapbuf.ptr;
+        return isshort() ? m_data.stack : m_data.heap.ptr;
     }
     
     CharT *data() noexcept

@@ -1,22 +1,30 @@
 #pragma once
 
 #include <cstdlib> /* std::malloc, std::free */
-
 #include <stdexcept> /* std::out_of_range */
 #include <new> /* std::bad_array_new_length, std::bad_alloc */
 
 #include "logerror.hpp"
 
 namespace crim {
-    template<class T> constexpr bool usage_assert(bool b_usage) noexcept;
-    template<class T> struct allocator;
-    template<class Alloc> struct allocator_traits;
+    template<class T> 
+    constexpr bool usage_assert(bool b_usage) noexcept;
+
+    template<class T> 
+    struct allocator;
+
+    template<class Alloc> 
+    struct allocator_traits;
 };
 
-// Mainly used in `static_assert` of `crim::allocator_traits`.
-// It's to prevent instantiations while keeping the template around.
-// With `static_assert(false, "")` the template definition just fails.
-template<class T> constexpr bool crim::usage_assert(bool b_usage) noexcept
+/**
+ * @brief   Mainly used in `static_assert` of `crim::allocator_traits`.
+ *          It's to prevent instantiations while keeping the template around.
+ * 
+ * @note    With `static_assert(false, "")` the template definition just fails. 
+ */
+template<class T> 
+constexpr bool crim::usage_assert(bool b_usage) noexcept
 {
     return b_usage;
 }
@@ -25,10 +33,12 @@ template<class T> constexpr bool crim::usage_assert(bool b_usage) noexcept
     crim_logerror_nofunc("crim::allocator<T>", func, info)
 
 /**
- * Custom allocator to be used by `std::allocator_traits`. 
+ * Custom allocator to be used by `std::allocator_traits`, or just use it
+ * manually. Your choice.
  *  - https://learn.microsoft.com/en-us/cpp/standard-library/allocators?view=msvc-170#writing-your-own-allocator-c11k
  */
-template<class T> struct crim::allocator {
+template<class T> 
+struct crim::allocator {
     // Need these for use w/ std::allocator traits.
     using value_type = T;
     using size_type = std::size_t;
@@ -43,7 +53,8 @@ template<class T> struct crim::allocator {
     {}
 
     // Converting copy-constructor.
-    template<class OtherT> allocator(const allocator<OtherT> &other) noexcept
+    template<class OtherT> 
+    allocator(const allocator<OtherT> &other) noexcept
     {}
     
     static constexpr size_type max_size() noexcept 
@@ -76,7 +87,7 @@ template<class T> struct crim::allocator {
         }
         // Running out of memory IS an exceptional situation.
         //  - https://stackoverflow.com/a/4827445
-        void *p_memory = std::malloc(sizeof(T) * n_count);
+        void *p_memory{std::malloc(sizeof(T) * n_count)};
         if (p_memory == nullptr) {
             crim_logerror("allocate", "Failed to allocate memory!");
             throw std::bad_alloc();
@@ -109,7 +120,7 @@ template<class T> struct crim::allocator {
     }
 
     // Construct at uses placement new. For trivials it's just a copy.
-    void copy(T *p_dest, const T *p_src, size_type n_count)
+    void uninitialized_copy(T *p_dest, const T *p_src, size_type n_count)
     {
         for (size_type i = 0; i < n_count; i++) {
             construct(&p_dest[i], p_src[i]);

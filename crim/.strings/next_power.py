@@ -1,8 +1,15 @@
 import math
+from typing import Callable, TypeAlias
+
+# Creates a type alias w/ argument and return type-hinting
+bitfn:   TypeAlias = Callable[[int], int]
+bitpair: TypeAlias = tuple[int, int]
 
 BASE_BINARY: int = 2
 
-def bit_base2_upper_body(value: int, function) -> tuple[int, int]:
+# We need the Callable type to help type-hint our lambdas.
+# See: https://stackoverflow.com/a/46105207
+def bit_callback(value: int, func: Callable[[int], int]) -> tuple[int, int]:
     """ 
     Example usages:
     ```py
@@ -18,9 +25,10 @@ def bit_base2_upper_body(value: int, function) -> tuple[int, int]:
     elif value == 0:
         return value, 1
     power = (value - 1).bit_length()
-    return value, function(power)
+    return value, func(power)
 
-def bit_power_upper(value: int) -> tuple[int, int]:
+
+def bit_power_length(value: int):
     """ 
     We can assume that `value - 1`'s bit length is the exponent of the nearest
     power of 2. For example:
@@ -35,30 +43,17 @@ def bit_power_upper(value: int) -> tuple[int, int]:
         nearest      = 2^2 = 4
     ```
     """
-    if value < 0:
-        raise ValueError("Cannot get upper power of 2 for negative number!")
-    elif value == 0:
-        return (value, 1)
-    else:
-        power = (value - 1).bit_length()
-        # ** is exponentiation.
-        return (value, BASE_BINARY ** power)
+    return bit_callback(value, lambda power: BASE_BINARY ** power)
 
 
-def bit_shift_width(value: int) -> tuple[int, int]:
+def bit_shift_length(value: int):
     """ 
     We can approximate exponentiation using left bit shifting.
     """
-    if value < 0:
-        raise ValueError("Cannot get upper power of 2 for negative numbers!")
-    elif value == 0:
-        return (value, 1)
-    else:
-        power = (value - 1).bit_length()
-        return (value, 1 << power)
+    return bit_callback(value, lambda power: 1 << power)
 
 
-def power_log(value: int) -> tuple[int, int]:
+def bit_power_log(value: int):
     if value == 0:
         return value, 1
     else:
@@ -73,7 +68,7 @@ while True:
     # https://stackoverflow.com/a/406488
     try:
         test = int(input("Enter a number: "))
-        print("value: {}, upper: {}".format(*bit_power_upper(test)))
+        print("\tvalue: {}, upper: {}".format(*bit_shift_length(test)))
     except (KeyboardInterrupt, EOFError) as error:
         print("Received termination signal.")
         break

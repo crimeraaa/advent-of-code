@@ -1,6 +1,6 @@
 #include <cstdio>
 
-#include "input.hpp"
+#include "../input.hpp"
 
 namespace test {
     using string = crim::cstring;
