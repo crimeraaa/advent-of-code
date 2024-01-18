@@ -29,18 +29,18 @@
                 }
             ]
         },
+        // For some reason, providing miDebuggerPath messes it up for WSL?
         {
             "name": "(Linux gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${fileDirname}/bin/${fileBasenameNoExtension}", // no .exe
+            "program": "${fileDirname}/bin/${fileBasenameNoExtension}",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
-            "miDebuggerPath": "/usr/bin/gdb", // vastly different path
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",

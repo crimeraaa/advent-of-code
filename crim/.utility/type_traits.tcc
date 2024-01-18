@@ -73,14 +73,17 @@ namespace crim {
 #endif
 
 /**
- * BEGIN CHAR TRAITS 
+ * BEGIN BASE CHAR TRAITS 
  */
 #include "algorithm.tcc"
 #include <cstring> /* std::memove */
 #include <ios> /* std::streampos, std::streamoff */
-#include <cwchar> /* std::mbstate_t */
+#include <cwchar> /* WEOF, std::mbstate_t */
+#include <cstdio> /* EOF */
 
-namespace crim::base {
+#define CRIM_CHAR_TRAITS_EOF EOF
+
+namespace crim::impl {
     template<typename CharT>
     struct char_types;
     
@@ -98,7 +101,7 @@ namespace crim::base {
  *          - https://gcc.gnu.org/onlinedocs/libstdc++/libstdc++-api-4.5/a00783_source.html
   */
 template<typename CharT>
-struct crim::base::char_types {
+struct crim::impl::char_types {
     using int_type = unsigned long long;
     using pos_type = std::streampos;
     using off_type = std::streamoff;
@@ -116,19 +119,22 @@ struct crim::base::char_types {
  *          are likely wrong for most character types that aren't raw `char`.
  */
 template<typename CharT>
-struct crim::base::char_traits {
+struct crim::impl::char_traits {
     // Stupid, but probably used by other standard library functions and such.
-    using char_type  = CharT;
+    using char_type = CharT;
+
+    // No way in hell I'm typing all that out.
+    using base = crim::impl::char_traits<char_type>;
 
     // Helper typedef because the rest of the C++ STL does this for some reason.
     using reference = char_type&;
     using pointer = char_type*;
     using size_type = typename std::size_t;
     
-    // Need this since `const reference` refers to `char_type &const`.
+    // Need these since `const reference` refers to `char_type &const`.
     using const_reference = const char_type&;
-
-    // Need this since `const pointer` refers to `char_type *const`.
+    
+    // `const pointer` refers to `char_type *const`.
     using const_pointer = const char_type*;
     
     // Can hold all values of `char_type` alongside their `EOF` counterpart.
@@ -147,28 +153,49 @@ struct crim::base::char_traits {
     // Must be destructible, copy assignable and copy/move constructible.
     using state_type = typename char_types<CharT>::state_type;
     
-    static void assign(reference ch_dst, const_reference ch_src)
+    /**
+     * @brief   Generic function which copy-assigns `src` to `dst`. 
+     */
+    static void assign(reference dst, const_reference src)
     {
-        ch_dst = ch_src;
+        dst = src;
     }
     
-    static bool eq(const_reference ch_left, const_reference ch_right)
+    /**
+     * @brief       Case-sensitive equality comparison for one character.
+     *              By default we compare them by their internal representation,
+     *              such as ASCII values for `char`.
+     */
+    static bool eq(const_reference ch1, const_reference ch2)
     {
-        return ch_left == ch_right;
+        return ch1 == ch2;
     }
     
-    static bool lt(const_reference ch_left, const_reference ch_right)
+    /**
+     * @brief       Case-sensitive less-than comparison for one character.
+     *              By default we compare them by their internal representation,
+     *              such as ASCII values for `char`.
+     */
+    static bool lt(const_reference ch1, const_reference ch2)
     {
-        return ch_left < ch_right;
+        return ch1 < ch2;
     }
     
-    static int compare(const_pointer c_str1, const_pointer c_str2, size_type len)
+    /**
+     * @brief       Case-sensitive equality comparison between 2 nul terminated
+     *              strings of type `CharT`.
+     *
+     * @return      `-1` indicates `s1` is "less than" `s2`.
+     *              `1` indicates `s1` is "more than" `s2`.
+     *              `0` indicates that both strings are exactly the same.
+     */
+    static int compare(const_pointer s1, const_pointer s2, size_type len)
     {
         for (size_type i = 0; i < len; i++) {
-            if (lt(c_str1[i], c_str2[i])) {
-                // str1 is "lower" in ASCII value than c_str2 at this position
+            if (lt(s1[i], s2[i])) {
+                // str1 is "lower" in ASCII value than s2 at this position
                 return -1; 
-            } else if (lt(c_str2[i], c_str1[i])) {
+            } else if (lt(s2[i], s1[i])) {
                 // Vice versa
                 return 1; 
             }
@@ -176,47 +203,260 @@ struct crim::base::char_traits {
         return 0;
     }
     
-    // Basic string length for any sequence of nul-terminated kharacters.
-    static size_type length(const_pointer c_str)
+    /**
+     * @brief   Basic string length for any sequence of nul-terminated characters.
+     *          
+     * @note    If a dedicated library functions exists for a given type,
+     *          e.g. `std::strlen` or `std::wcslen`, specialize this function.
+     */
+    static size_type length(const_pointer s)
     {
         // Default constructor should 0 out memory, so should be '\0'.
-        static constexpr char_type nul = char_type();
+        static constexpr char_type nul{};
         size_type len = 0;
-        while (!eq(c_str[len], nul)) {
+        while (!eq(s[len], nul)) {
             ++len;
         }
         return len;
     }
     
-    // Get a pointer to the first occurence of `ch` in `c_str`, or `nullptr`.
-    static const_pointer find(const_pointer c_str, size_type len, const_reference ch)
+    /**
+     * @brief   Find the first occurence of `ch` in `s`.
+     * 
+     * @return  Pointer to occurence or `nullptr`.
+     */
+    static const_pointer find(const_pointer s, size_type len, const_reference ch)
     {
         for (size_type idx = 0; idx < len; idx++) {
-            if (eq(c_str[idx], ch)) {
-                return c_str + idx; // Absolute address via pointer arithmetic
+            if (eq(s[idx], ch)) {
+                return s + idx; // Absolute address via pointer arithmetic
             }
         }
         return nullptr;
     }
     
-    static pointer move(pointer c_str1, const_pointer c_str2, size_type len)
+    static pointer move(pointer dst, const_pointer src, size_type len)
     {
-        void *ptr = std::memmove(c_str1, c_str2, sizeof(char_type) * len);
-        return static_cast<char_type*>(ptr);
+        void *ptr = std::memmove(dst, src, sizeof(char_type) * len);
+        return static_cast<pointer>(ptr);
     }
     
-    static pointer copy(pointer c_str1, const_pointer c_str2, size_type len)
+    /**
+     * @brief   Copies `len` bytes of `src` into `dst` using `std::memcpy`.
+     */
+    static pointer copy(pointer dst, const_pointer src, size_type len)
     {
-        crim::copy(c_str2, c_str2 + len, c_str1);
-        return c_str1;
+        void *ptr = std::memcpy(dst, src, sizeof(char_type) * len);
+        return static_cast<pointer>(ptr);
     }
     
-    static pointer assign(pointer c_str, size_type len, char_type ch)
+    /**
+     * @brief   Fills range `s` to `s + len` with `ch` using `std::memset`.
+     */
+    static pointer assign(pointer s, size_type len, char_type ch)
     {
-        crim::fill_n(c_str, len, ch);
-        return c_str;
+        void *ptr = std::memset(s, ch, sizeof(char_type) * len);
+        return static_cast<pointer>(ptr);
+    }
+    
+    static char_type to_char_type(const int_type &ch)
+    {
+        return static_cast<char_type>(ch);
+    }
+    
+    static bool eq_int_type(const int_type &c1, const int_type &c2)
+    {
+        return c1 == c2;
+    }
+
+    /**
+     * @brief   The end-of-file return value used by library functions for the 
+     *          given type. 
+     * 
+     * @note    Note that `wchar_t` MUST use `WEOF`.
+     *          For other types, you may need to specialize this.
+     */
+    static int_type eof()
+    {
+        return static_cast<int_type>(CRIM_CHAR_TRAITS_EOF);
+    }
+    
+    /**
+     * @brief   Check if `eof()` is not true.
+     * 
+     * @return  0 if `eof()` is true, else the value of `ch`.
+     */
+    static int_type not_eof(const int_type &ch)
+    {
+        return (ch == eof()) ? 0 : ch;
     }
 };
 /**
- * END CHAR TRAITS 
+ * END BASE CHAR TRAITS 
+ */
+
+/**
+ * BEGIN CHAR TRAITS SPECIALIZATIONS 
+ */
+
+namespace crim {
+    template<typename CharT>
+    struct char_traits;
+};
+
+/**
+ * @brief   Base class for explicit traits specializations.
+ *          Probably wrong for actual character types, this is just a thin
+ *          wrapper around `crim::impl::char_traits`.
+ *          - https://gcc.gnu.org/onlinedocs/libstdc++/libstdc++-api-4.5/a00783_source.html
+ *
+ * @note    You're better off creating explicit specializations of this alongside
+ *          `crim::impl::char_types`.
+ */
+template<typename CharT>
+struct crim::char_traits : public crim::impl::char_traits<CharT> {};
+
+/**
+ * BEGIN SPECIALIZATION: char 
+ */
+
+/** 
+ * @brief   `crim::impl::char_traits` uses typenames from `crim::impl::char_types`.
+ *          So specializing this ensures our inherited types are correct. 
+ */
+template<> struct crim::impl::char_types<char> {
+    using char_type = char;
+    using int_type = int;
+    using pos_type = std::streampos;
+    using off_type = std::streamoff;
+    using state_type = std::mbstate_t;
+};
+
+/**
+ * @brief   Template specialization of `crim::char_traits<T>` for `char`. 
+ *          By inheriting the base class publicly, we have access to many of the
+ *          predefined functions that we did not specialize.
+ *          So common functions like `copy` and `move` are inherited.
+ */
+template<> 
+struct crim::char_traits<char> : public crim::impl::char_traits<char> {
+    /**
+     * Bring `assign(char &dst, const char &src)` into scope for usage.
+     *
+     * This is because when we specialize `assign(char *p, size_t len, char ch)`
+     * by default we don't look for any matches/overloads from the impl class.
+     *  - https://stackoverflow.com/a/14212227
+     */
+    // using base::assign;
+
+    /**
+     * @brief   Compare `s1` and `s2` case-sensitively.
+     * 
+     * @return  == 0:   both strings are the same.
+     *          >  0:   s1's first differing character is higher than s2's.
+     *          <  0:   s1's first differing character is lower than s2's.
+     */
+    static int compare(const_pointer s1, const_pointer s2, size_type len)
+    {
+        return std::memcmp(s1, s2, len);
+    }
+    
+    /**
+     * @brief   String length, duh. Specialization to call `std::strlen`.
+     * 
+     * @note    `std::strlen` will ONLY work for char types, hence the need for
+     *          the specialization.
+     */
+    static size_type length(const_pointer s)
+    {
+        return std::strlen(s);
+    }
+    
+    /**
+     * @brief   Find first occurence of `ch` in `s`. Calls `std::memchr`.
+     */
+    static const_pointer find(const_pointer s, size_type len, const_reference ch)
+    {
+        const void *p = std::memchr(s, ch, len);
+        return static_cast<const_pointer>(p);
+    }
+    
+};
+/**
+ * END SPECIALIZATION: char 
+ */
+
+/**
+ * BEGIN SPECIALIZATION: wchar_t 
+ */
+
+template<>
+struct crim::impl::char_types<wchar_t> {
+    using char_type = wchar_t;
+    using int_type = wint_t;
+    using pos_type = std::streampos;
+    using off_type = std::streamoff;
+    using state_type = std::mbstate_t;
+};
+
+template<>
+struct crim::char_traits<wchar_t> : public crim::impl::char_traits<wchar_t> {
+    /**
+     * @brief   Compare `s1` and `s2` case-sensitively up to `len` wide characters.
+     *          We rely on `std::wmemcmp`, maybe it's more efficient.
+     */
+    static int compare(const_pointer s1, const_pointer s2, size_type len)
+    {
+        return std::wmemcmp(s1, s2, len);        
+    }
+    
+    /**
+     * @brief   String length, duh. Relies on `std::wcslen`.
+     */
+    static size_type length(const_pointer s)
+    {
+        return std::wcslen(s);
+    }
+    
+    static const_pointer find(const_pointer s1, size_type len, const_reference ch)
+    {
+        return std::wmemchr(s1, ch, len);
+    }
+    
+    static pointer move(pointer dst, const_pointer src, size_type len)
+    {
+        return std::wmemmove(dst, src, len);
+    }
+    
+    static pointer copy(pointer dst, const_pointer src, size_type len)
+    {
+        return std::wmemcpy(dst, src, len);
+    }
+    
+    static pointer assign(pointer s, size_type len, char_type ch)
+    {
+        return std::wmemset(s, ch, len);
+    }
+    
+    /**
+     * @brief   The end-of-file return value, `WEOF`, given by library functions
+     *          like `fgetwc()`. 
+     * 
+     * @note    Specialized from the base `eof()` which would otherwise just 
+     *          return the normal `EOF`.
+     */
+    static int_type eof()
+    {
+        return static_cast<int_type>(WEOF);
+    }
+};
+
+/**
+ * END SPECIALIZATION: wchar_t
+ */
+
+#undef CRIM_CHAR_TRAITS_EOF
+
+/**
+ * END CHAR TRAITS SPECIALIZATIONS
  */

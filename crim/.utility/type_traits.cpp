@@ -28,7 +28,7 @@ int main()
 {
     int x = 13;
     test_lvalue_reference(x); // Should be a compile-time error!
-    test_rvalue_reference(crim::move(x)); // Should be valid!
+    test_rvalue_reference(crim::rvalue_cast(x)); // Should be valid!
     test_rvalue_reference(101); // literals usually go for rvalue references
     return 0;
 }
