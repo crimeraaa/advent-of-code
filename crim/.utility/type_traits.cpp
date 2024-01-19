@@ -1,5 +1,6 @@
 #include "type_traits.tcc"
 #include "utility.tcc"
+#include "../base_string.tcc"
 #include <cstdio>
 
 void test_lvalue_reference(const int &lvalue)

@@ -69,7 +69,7 @@ public:
         : base_string(std::strlen(p_literal))
     {
         // TODO: create my own char_traits  
-        copy_c_string(p_literal);
+        copy_string(p_literal);
     }
 
     base_string(const base_string &other) 
@@ -96,25 +96,23 @@ public:
     }
 
 private:
-    void copy_short(const CharT *p_literal)
+    /**
+     * @brief   Since character types are most likely trivial types, I'm hoping
+     *          we can get away with using `std::memcpy` on them as it'll be
+     *          really fast.
+     */
+    void copy_string(const CharT *p_data)
     {
         // Add 1 to the count so we also copy the nul char.
-        m_memory.uninitialized_copy(m_data.stack, p_literal, m_ncount + 1);
-    }
-    
-    void copy_long(const CharT *p_src)
-    {
-        // Add 1 to count to also copy nul char from the literal.
-        // For long strings, we only start allocations by powers of 2.
-        m_data.heap.cap = {crim::digits::bit_next_power(m_ncount + 1)};
-        m_data.heap.ptr = m_memory.allocate(m_data.heap.cap);
-        m_memory.uninitialized_copy(m_data.heap.ptr, p_src, m_data.heap.cap);
-    }
-
-    void copy_c_string(const CharT *p_data)
-    {
         // For copy-ctor, since we copied other's length this should be OK.
-        isshort() ? copy_short(p_data) : copy_long(p_data);
+        if (isshort()) {
+            std::memcpy(m_data.stack, p_data, m_ncount + 1);
+        } else {
+            // For long strings, we only start allocations by powers of 2.
+            m_data.heap.cap = crim::digits::bit_next_power(m_ncount + 1);
+            m_data.heap.ptr = m_memory.allocate(m_data.heap.cap);
+            std::memcpy(m_data.heap.ptr, p_data, m_data.heap.cap);
+        }
     }
     
     // We "take ownership" of `rvalue`'s m_data.heap.ptr if it's been allocated.
@@ -258,8 +256,8 @@ public:
             }
         }
         // `m_data.heap.ptr` has uninitialized memory, need to append nul char.
-        m_memory.construct(&m_data.heap.ptr[m_ncount++], ch);
-        m_memory.construct(&m_data.heap.ptr[m_ncount], '\0');
+        m_data.heap.ptr[m_ncount++] = ch;
+        m_data.heap.ptr[m_ncount] = '\0';
         return true;
     }
     

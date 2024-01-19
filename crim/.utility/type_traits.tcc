@@ -110,7 +110,11 @@ struct crim::impl::char_types {
 
 /**
  * @brief   Base class which actually implements the C++ named requirement for
- *          CharTraits as seen in `std::char_traits`.
+ *          CharTraits as seen in `std::char_traits`. This is designed to be
+ *          inherited from, as something like this:
+ * 
+ *          `struct char_traits<char> : char_traits<char>` is obviously invalid!
+ *
  *          Actually, it functions more like a templated namespace.
  *          - https://en.cppreference.com/w/cpp/named_req/CharTraits
  *          - https://gcc.gnu.org/onlinedocs/libstdc++/libstdc++-api-4.5/a00783_source.html
@@ -251,7 +255,8 @@ struct crim::impl::char_traits {
     }
     
     /**
-     * @brief   Fills range `s` to `s + len` with `ch` using `std::memset`.
+     * @brief   Despite its confusing name, this function actually fills range
+     *          `s` to `&s[len - 1]` with `ch` using `std::memset`.
      */
     static pointer assign(pointer s, size_type len, char_type ch)
     {
@@ -259,9 +264,19 @@ struct crim::impl::char_traits {
         return static_cast<pointer>(ptr);
     }
     
+    /**
+     * @brief   Convert `ch` to `char_type` via the basic constructor.
+     *          It seems this is the more common implementation rather than
+     *          `static_cast<char_type>(ch);`
+     */
     static char_type to_char_type(const int_type &ch)
     {
-        return static_cast<char_type>(ch);
+        return char_type(ch);
+    }
+    
+    static int_type to_int_type(const_reference ch)
+    {
+        return int_type(ch);
     }
     
     static bool eq_int_type(const int_type &c1, const int_type &c2)
@@ -273,8 +288,8 @@ struct crim::impl::char_traits {
      * @brief   The end-of-file return value used by library functions for the 
      *          given type. 
      * 
-     * @note    Note that `wchar_t` MUST use `WEOF`.
-     *          For other types, you may need to specialize this.
+     * @note    `wchar_t` specializas this to use `WEOF`.
+     *          For other types, you may also need to specialize this.
      */
     static int_type eof()
     {
@@ -310,8 +325,8 @@ namespace crim {
  *          wrapper around `crim::impl::char_traits`.
  *          - https://gcc.gnu.org/onlinedocs/libstdc++/libstdc++-api-4.5/a00783_source.html
  *
- * @note    You're better off creating explicit specializations of this alongside
- *          `crim::impl::char_types`.
+ * @note    You're better off creating explicit specializations for
+ *          `crim::impl:char_traits` and `crim::impl::char_types`.
  */
 template<typename CharT>
 struct crim::char_traits : public crim::impl::char_traits<CharT> {};
@@ -352,9 +367,9 @@ struct crim::char_traits<char> : public crim::impl::char_traits<char> {
     /**
      * @brief   Compare `s1` and `s2` case-sensitively.
      * 
-     * @return  == 0:   both strings are the same.
-     *          >  0:   s1's first differing character is higher than s2's.
-     *          <  0:   s1's first differing character is lower than s2's.
+     * @return  `== 0`:   both strings are the same.
+     *          `>  0`:   s1's first differing character is higher than s2's.
+     *          `<  0`:   s1's first differing character is lower than s2's.
      */
     static int compare(const_pointer s1, const_pointer s2, size_type len)
     {
@@ -381,6 +396,25 @@ struct crim::char_traits<char> : public crim::impl::char_traits<char> {
         return static_cast<const_pointer>(p);
     }
     
+    /**
+     * @brief   Instead of calling `int_type`'s basic constructor, GNU libstdc++
+     *          opts to just cast `ch` to `char_type` directly. They do not do
+     *          this for other character type specializations.
+     */
+    static char_type to_char_type(const int_type &ch)
+    {
+        return static_cast<char_type>(ch);
+    }
+    
+    /**
+     * @brief   GNU's libstdc++ does this interesting thing.
+     *          To keep both the byte `0xff` and the eof symbol `0xffffffff`
+     *          from ending up as `0xffffffff`, they do this cast. 
+     */
+    static int_type to_int_type(const_reference &ch)
+    {
+        return static_cast<int_type>(static_cast<unsigned char>(ch));
+    }
 };
 /**
  * END SPECIALIZATION: char 
@@ -403,7 +437,9 @@ template<>
 struct crim::char_traits<wchar_t> : public crim::impl::char_traits<wchar_t> {
     /**
      * @brief   Compare `s1` and `s2` case-sensitively up to `len` wide characters.
-     *          We rely on `std::wmemcmp`, maybe it's more efficient.
+     *          
+     * @note    We rely on `std::wmemcmp`, as it might be more optimized to work
+     *          with `wchar_t`'s specifically. Of course, std::memcmp also works.
      */
     static int compare(const_pointer s1, const_pointer s2, size_type len)
     {
@@ -433,6 +469,10 @@ struct crim::char_traits<wchar_t> : public crim::impl::char_traits<wchar_t> {
         return std::wmemcpy(dst, src, len);
     }
     
+    /**
+     * @brief   Despite its confusing name causing an overload, this function 
+     *          fills the range `s` to `&s[len -1]` with `ch` using `std::wmemset`.
+     */
     static pointer assign(pointer s, size_type len, char_type ch)
     {
         return std::wmemset(s, ch, len);
