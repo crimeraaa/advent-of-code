@@ -1,6 +1,7 @@
 #include <cstdio>
 
 #include "../input.hpp"
+#include "../base_string.tcc"
 
 namespace test {
     using string = crim::cstring;
@@ -22,7 +23,7 @@ namespace test {
     }
     
     void test_body_copy(const char *p_msg) {
-        test_body(p_msg, [](string&src)->string {
+        test_body(p_msg, [](string &src)->string {
             return src;
         });
     }

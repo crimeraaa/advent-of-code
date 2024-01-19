@@ -25,11 +25,20 @@ void test_rvalue_reference(const int &&rvalue)
     printf("Hello auto y = %i!\n", y);
 }
 
+void test_cstring()
+{
+    crim::cstring s = "Hi mom!";
+    crim::cstring s2 = "The quick brown fox jumps over the lazy dog.";
+    printf("s: %s (length: %zu, capacity: %zu)\n", s.c_str(), s.length(), s.capacity());
+    printf("s2: %s (length: %zu, capacity: %zu)\n", s2.c_str(), s2.length(), s2.capacity());
+}
+
 int main()
 {
     int x = 13;
     test_lvalue_reference(x); // Should be a compile-time error!
     test_rvalue_reference(crim::rvalue_cast(x)); // Should be valid!
     test_rvalue_reference(101); // literals usually go for rvalue references
+    test_cstring();
     return 0;
 }

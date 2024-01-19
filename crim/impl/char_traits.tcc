@@ -1,87 +1,10 @@
-#pragma once
-
 /**
- * @brief       `#pragma region` isn't recognized by GCC I think. 
- *              So ignore the pragma as it's not used at compile-time.
- *              - https://stackoverflow.com/a/22539400
- * 
- * @warning     Be sure to pop back this pragma though, else other compilation 
- *              units won't be checked for unknown pragmas!
- *              
- * @note        Seems this is bugged and GCC doesn't respect this properly.
- *              - https://gcc.gnu.org/bugzilla/show_bug.cgi?id=53431
- *              - https://stackoverflow.com/a/55078975
+ * BEGIN: BASE CHAR TRAITS 
  */
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunknown-pragmas"
-#endif
-
-// #pragma region crim_remove_reference
-/**
- * -*- BEGIN REMOVE REFERENCE -*-
- * - https://en.cppreference.com/w/cpp/types/remove_reference
- */
-
-namespace crim {
-    template<class T>
-    struct remove_reference;
-};
-
-/**
- * @brief   "Base" version, although rather pointless on its own for immediate types.
- *          This is meant more for completeness so that it just works.
- */
-template<class T>
-struct crim::remove_reference {
-    using type = T;
-};
-
-/**
- * @brief   Specialization to extract the raw type from lvalue references.
- */
-template<class T>
-struct crim::remove_reference<T&> {
-    using type = T;
-};
-
-/**
- * @brief   Specialization to extract the raw type from rvalue references.
- */
-template<class T>
-struct crim::remove_reference<T&&> {
-    using type = T;
-};
-
-/**
- * -*- END REMOVE REFERENCE  -*-
- */
-// #pragma endregion crim_remove_reference
-
-namespace crim {
-    /**
-     * @brief   Templated helper type which is somewhat nicer to use.
-     *          Functinally no difference from `remove_reference<T>::type`.
-     *          - https://en.cppreference.com/w/cpp/types/remove_reference
-     */
-    template<class T>
-    using remove_reference_t = typename remove_reference<T>::type;
-}
-
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
-
-/**
- * BEGIN BASE CHAR TRAITS 
- */
-#include "algorithm.tcc"
-#include <cstring> /* std::memove */
+#include <cstring> /* std::mem* family, std::str* family */
 #include <ios> /* std::streampos, std::streamoff */
-#include <cwchar> /* WEOF, std::mbstate_t */
+#include <cwchar> /* WEOF, std::wmem* family, std::wcs* family, std::mbstate_t */
 #include <cstdio> /* EOF */
-
-#define CRIM_CHAR_TRAITS_EOF EOF
 
 namespace crim::impl {
     template<typename CharT>
@@ -288,12 +211,12 @@ struct crim::impl::char_traits {
      * @brief   The end-of-file return value used by library functions for the 
      *          given type. 
      * 
-     * @note    `wchar_t` specializas this to use `WEOF`.
+     * @note    `wchar_t` specializes this to use `WEOF`.
      *          For other types, you may also need to specialize this.
      */
     static int_type eof()
     {
-        return static_cast<int_type>(CRIM_CHAR_TRAITS_EOF);
+        return static_cast<int_type>(EOF);
     }
     
     /**
@@ -307,11 +230,11 @@ struct crim::impl::char_traits {
     }
 };
 /**
- * END BASE CHAR TRAITS 
+ * END: BASE CHAR TRAITS 
  */
 
 /**
- * BEGIN CHAR TRAITS SPECIALIZATIONS 
+ * BEGIN: CHAR TRAITS SPECIALIZATIONS 
  */
 
 namespace crim {
@@ -332,14 +255,15 @@ template<typename CharT>
 struct crim::char_traits : public crim::impl::char_traits<CharT> {};
 
 /**
- * BEGIN SPECIALIZATION: char 
+ * BEGIN: SPECIALIZATION: char 
  */
 
 /** 
  * @brief   `crim::impl::char_traits` uses typenames from `crim::impl::char_types`.
  *          So specializing this ensures our inherited types are correct. 
  */
-template<> struct crim::impl::char_types<char> {
+template<> 
+struct crim::impl::char_types<char> {
     using char_type = char;
     using int_type = int;
     using pos_type = std::streampos;
@@ -417,11 +341,11 @@ struct crim::char_traits<char> : public crim::impl::char_traits<char> {
     }
 };
 /**
- * END SPECIALIZATION: char 
+ * END: SPECIALIZATION: char 
  */
 
 /**
- * BEGIN SPECIALIZATION: wchar_t 
+ * BEGIN: SPECIALIZATION: wchar_t 
  */
 
 template<>
@@ -492,11 +416,9 @@ struct crim::char_traits<wchar_t> : public crim::impl::char_traits<wchar_t> {
 };
 
 /**
- * END SPECIALIZATION: wchar_t
+ * END: SPECIALIZATION: wchar_t
  */
 
-#undef CRIM_CHAR_TRAITS_EOF
-
 /**
- * END CHAR TRAITS SPECIALIZATIONS
+ * END: CHAR TRAITS SPECIALIZATIONS
  */

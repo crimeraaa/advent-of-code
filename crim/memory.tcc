@@ -44,8 +44,8 @@ struct crim::allocator {
     using size_type = std::size_t;
     
     enum limit : size_type {
-        lower = 1,
-        upper = static_cast<size_type>(-1) / sizeof(value_type)
+        limit_lower = 1,
+        limit_upper = static_cast<size_type>(-1) / sizeof(value_type)
     };
 
     // Default constructor is not required by the C++ standard library.
@@ -59,13 +59,13 @@ struct crim::allocator {
     
     static constexpr size_type max_size() noexcept 
     {
-        return limit::upper;
+        return limit_upper;
     }
 
     // Prevent users from requesting a size of 0 or something ridiculously big.
     static constexpr bool is_valid_size(size_type n_count) noexcept
     {
-        return n_count >= limit::lower && n_count < limit::upper;
+        return n_count >= limit_lower && n_count < limit_upper;
     }
 
     /**  
@@ -153,6 +153,7 @@ struct crim::allocator {
 
 #undef crim_logerror
 
+// TODO: Need to implement pointer_traits first.
 /**
  * @tparam  Alloc   A template instance of `crim::allocator`.
  */

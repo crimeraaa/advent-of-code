@@ -8,26 +8,27 @@
 #include <iostream>
 #include <sstream>
 #include <utility>
+
 #include "../memory.tcc"
 #include "../bitmanip.hpp"
 
 void list_powers_of_2()
 {
-    constexpr int bit_size = crim::digits::bit_size<int>();
+    constexpr int bit_size = crim::bit::size<int>();
     for (int i = 0; i <= bit_size; i++) {
         std::printf("2^%i = %f\n", i, std::pow(2, i));
     }
 }
 
 // constexpr parameters aren't allowed so mimic them w/ template instantiations.
-// e.g: `dump_bitlens<crim::digits::bit_size<int>()>();`
+// e.g: `dump_bitlens<crim::bit::bit_size<int>()>();`
 //  - https://stackoverflow.com/a/70322991
 template<class T> void dump_bitlens()
 {
-    constexpr int bits = crim::digits::bit_size<T>();
-    int pad = crim::digits::count_digits(bits);
+    constexpr int bits = crim::bit::size<T>();
+    int pad = crim::count_digits(bits);
     for (int i = 0; i <= bits; i++) {
-        int result = crim::digits::bit_next_power(i);
+        int result = crim::bit::next_power(i);
         std::printf("i: %*i\tNearest power of 2: %i\n", pad, i, result);
     }
 }
@@ -66,26 +67,20 @@ int get_number(const char *prompt)
 std::pair<int, int> get_power_exponent_pair(int value)
 {
     // The function already checks when value == 0.
-    int power = crim::digits::bit_next_power(value);
+    int power = crim::bit::next_power(value);
 
     // When value == 0, bit length of -1 gives us 1 bits which is not desired!
-    int exponent = (value == 0) ? 0 : crim::digits::bit_length(value - 1);    
+    int exponent = (value == 0) ? 0 : crim::bit::length(value - 1);    
 
     return std::make_pair(power, exponent);
 }
 
-void test_next_power(std::stringstream &output)
+void test_next_power()
 {
     int n = get_number("Enter a number: ");
     const auto [power, exponent] = get_power_exponent_pair(n);
-    output << "The nearest power of 2 is " << power << ", "
-           << "A.K.A. 2 raised to " << exponent << ".\n";
-    std::cout << output.str();
-    // To actually clear a stringstream: https://stackoverflow.com/a/2848109
-    // It's marginally more efficient to call std::string's empty constructor 
-    // than to call the std::string constructor with an empty C-string.
-    output.str(std::string());
-    output.clear();
+    std::cout << "The nearest power of 2 is " << power << ", "
+              << "A.K.A. 2 raised to " << exponent << ".\n";
 }
 
 int main()
@@ -93,7 +88,7 @@ int main()
     std::stringstream output;
     // User can press CTRL-D to end this loop.
     while (!std::cin.eof()) {
-        test_next_power(output);
+        test_next_power();
     }
     return 0;
 }

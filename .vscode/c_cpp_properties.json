@@ -8,7 +8,8 @@
         ],
         "myIncludePaths": [
             // "${fileDirname}", // doesn't work it seems
-            "${workspaceFolder}"
+            "${workspaceFolder}",
+            "${workspaceFolder}/crim"
         ]
     },
     // Cannot make this conditional it seems?
