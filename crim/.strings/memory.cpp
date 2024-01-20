@@ -64,28 +64,22 @@ int get_number(const char *prompt)
     return 0;
 }
 
-std::pair<int, int> get_power_exponent_pair(int value)
-{
-    // The function already checks when value == 0.
-    int power = crim::bit::next_power(value);
-
-    // When value == 0, bit length of -1 gives us 1 bits which is not desired!
-    int exponent = (value == 0) ? 0 : crim::bit::length(value - 1);    
-
-    return std::make_pair(power, exponent);
-}
-
 void test_next_power()
 {
-    int n = get_number("Enter a number: ");
-    const auto [power, exponent] = get_power_exponent_pair(n);
+    int n{get_number("Enter a number: ")};
+
+    // This function already checks when value == 0;
+    size_t power{crim::bit::next_power(n)};
+
+    // Subtract 1 so that powers of 2 get the correct length
+    size_t exponent{(n == 0) ? 0 : crim::bit::length(n - 1)};
+
     std::cout << "The nearest power of 2 is " << power << ", "
               << "A.K.A. 2 raised to " << exponent << ".\n";
 }
 
 int main()
 {
-    std::stringstream output;
     // User can press CTRL-D to end this loop.
     while (!std::cin.eof()) {
         test_next_power();

@@ -2,6 +2,7 @@
 
 #include <cstdlib> /* std::malloc, std::free */
 #include <stdexcept> /* std::out_of_range */
+#include <memory> /* std::pointer_traits */
 #include <new> /* std::bad_array_new_length, std::bad_alloc */
 
 #include "logerror.hpp"
@@ -95,18 +96,6 @@ struct crim::allocator {
         return static_cast<T*>(p_memory); 
     }
     
-    /** 
-     * Double colons before `new` ensures we resolve from global namespace.
-     * With placement new, we can construct objects in allocated memory blocks. 
-     *  - https://en.cppreference.com/w/cpp/memory/allocator_traits/construct 
-     *  - https://en.cppreference.com/w/cpp/memory/allocator/construct 
-     */
-    template<class CtorT, class ...Args>
-    void construct(CtorT *p_memory, Args &&...args) const
-    {
-        ::new (static_cast<void*>(p_memory)) CtorT(std::forward<Args>(args)...);
-    }
-    
     /**
      * @brief       This literally just frees the pointer.
      *
@@ -117,58 +106,28 @@ struct crim::allocator {
     {
         (void)n_count; // Signature needed by std::allocator, but we don't need.
         std::free(p_memory);
-    }
-
-    // Construct at uses placement new. For trivials it's just a copy.
-    void uninitialized_copy(T *p_dest, const T *p_src, size_type n_count)
-    {
-        for (size_type i = 0; i < n_count; i++) {
-            construct(&p_dest[i], p_src[i]);
-        }
-    }
-
-    /** 
-     * Typedefs & template parameters of fundamental types are OK. However, 
-     * calling destructors on fundamental types themselves isn't. 
-     * ```cpp
-     * p_memory->~int(); // is not allowed 
-     * p_memory->~T(); // is allowed
-     * ```
-     *  - https://en.cppreference.com/w/cpp/memory/destroy_at 
-     */
-    template<class DtorT>
-    void destroy(DtorT *p_memory) const
-    {
-        p_memory->~DtorT(); // For fundamentals types this is just a no-op.
-    }
-
-    void yeet(T *p_memory, size_type n_count)
-    {
-        for (size_type i = 0; i < n_count; i++) {
-            destroy(&p_memory[i]);
-        }
-    }
-    
+    } 
 };
 
 #undef crim_logerror
 
-// TODO: Need to implement pointer_traits first.
 /**
- * @tparam  Alloc   A template instance of `crim::allocator`.
+ * @brief   See: https://en.cppreference.com/w/cpp/memory/allocator_traits
+ * @tparam  Alloc   A template instantiation of an allocator, be it `std` or `crim`.
  */
 template<class Alloc> struct crim::allocator_traits {
-    static_assert(crim::usage_assert<Alloc>(false), "Don't use this!");
+    // static_assert(crim::usage_assert<Alloc>(false), "Don't use this!");
 
-    // https://en.cppreference.com/w/cpp/memory/allocator_traits
-    using allocator_type = Alloc;
-    using value_type = typename Alloc::value_type;
-    using size_type = typename Alloc::size_type;
-
-    using pointer = value_type*;
-    using const_pointer = const value_type*;
-    using void_pointer = void*;
-    using const_void_pointer = const void*;
+    using allocator_type     = Alloc;
+    using value_type         = typename allocator_type::value_type;
+    using size_type          = typename allocator_type::size_type;
+    
+    using pointer            = value_type*;
+    using pointer_traits     = std::pointer_traits<pointer>;
+    using const_pointer      = typename pointer_traits::rebind<const value_type>;
+    using void_pointer       = typename pointer_traits::rebind<void>;
+    using const_void_pointer = typename pointer_traits::rebind<const void>;
+    using difference_type    = typename pointer_traits::difference_type;
 
     // Using unsigned integer underflow, we should get the highest value. 
     static constexpr size_type upper_limit = static_cast<size_type>(-1);
@@ -177,7 +136,7 @@ template<class Alloc> struct crim::allocator_traits {
         return (upper_limit / sizeof(value_type)) - 1;
     }
 
-    static pointer allocate(allocator_type allocator, size_type n_count)
+    static pointer allocate(allocator_type &allocator, size_type n_count)
     {
         if (n_count == 0) {
             return nullptr;
@@ -187,9 +146,31 @@ template<class Alloc> struct crim::allocator_traits {
         return allocator.allocate(n_count);
     }
     
-    static void deallocate(allocator_type allocator, size_type n_count)
+    static void deallocate(allocator_type &allocator, size_type n_count)
     {
         (void)n_count;
         allocator.deallocate();
+    }
+    
+    /** 
+     * Double colons before `new` ensures we resolve from global namespace.
+     * With placement new, we can construct objects in allocated memory blocks. 
+     *  - https://en.cppreference.com/w/cpp/memory/allocator_traits/construct 
+     *  - https://en.cppreference.com/w/cpp/memory/allocator/construct 
+     */
+    template<class T, class ...Args>
+    static void construct(T *p_memory, Args &&...args)
+    {
+        ::new (static_cast<void*>(p_memory)) T(std::forward<Args>(args)...);
+    }
+
+    /** 
+     * At the given location `p_memory`, call the destructor of type `T`.
+     *  - https://en.cppreference.com/w/cpp/memory/destroy_at 
+     */
+    template<class T>
+    static void destroy(T *p_memory)
+    {
+        p_memory->~T(); // For fundamentals types this is just a no-op.
     }
 };

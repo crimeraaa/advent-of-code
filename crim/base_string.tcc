@@ -13,12 +13,12 @@
     crim_logerror_nofunc("crim::base_string<T>", func, info)
 
 namespace crim {
-    template<typename CharT, class Traits, class Allocator> 
+    template<typename CharT, class Traits, class Alloc> 
     class base_string;
 }
 
 /**
- * BEGIN BASE_STRING IMPLEMENTATION -*------------------------------------------
+ * BEGIN: BASE_STRING IMPLEMENTATION -*-----------------------------------------
 */
 
 /**
@@ -27,27 +27,27 @@ namespace crim {
  *
  * @note    Default values must go in forward declarations.
  */
-template<typename CharT, class Traits, class Allocator> 
+template<typename CharT, class Traits, class Alloc> 
 class crim::base_string {
 /**
- * BEGIN TYPEDEFS -*------------------------------------------------------------
+ * BEGIN: TYPEDEFS -*-----------------------------------------------------------
  */
 private:
     using value_type = CharT;
     using traits_type = Traits;
-    using allocator_type = Allocator;
+    using allocator_type = Alloc;
 
     using reference = value_type &;
     using const_reference = const value_type &;
     using pointer = value_type *;
     using const_pointer = const value_type *;
-    using size_type = typename Allocator::size_type;
+    using size_type = typename Alloc::size_type;
 /** 
- * END TYPEDEFS -*--------------------------------------------------------------
+ * END: TYPEDEFS -*-------------------------------------------------------------
  */
 
 /**
- * BEGIN DATA MEMBERS -*--------------------------------------------------------
+ * BEGIN: DATA MEMBERS -*-------------------------------------------------------
  */
 private:
     allocator_type m_allocator;
@@ -80,11 +80,11 @@ private:
         return const_cast<const base_string*>(this);
     }
 /**
- * END DATA MEMBERS -*----------------------------------------------------------
+ * END: DATA MEMBERS -*---------------------------------------------------------
  */
 
 /**
- * BEGIN CONSTRUCTOR/DESTRUCTORS -*---------------------------------------------
+ * BEGIN: CONSTRUCTOR/DESTRUCTORS -*--------------------------------------------
  */
 public: 
     base_string(size_type n_length = 0) noexcept
@@ -311,11 +311,11 @@ public:
 };
 
 /**
- * END BASE STRING IMPLEMENTATION -*--------------------------------------------
+ * END: BASE STRING IMPLEMENTATION -*-------------------------------------------
  */
 
 /**
- * BEGIN BASE STRING INSTANTIATIONS -*------------------------------------------
+ * BEGIN: BASE STRING INSTANTIATIONS -*-----------------------------------------
  */
 
 namespace crim {
@@ -324,7 +324,7 @@ namespace crim {
 }
 
 /**
- * END BASE STRING INSTANTIATIONS -*--------------------------------------------
+ * END: BASE STRING INSTANTIATIONS -*-------------------------------------------
  */
 
 #undef crim_logerror

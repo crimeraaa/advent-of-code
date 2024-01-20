@@ -17,7 +17,85 @@
 #pragma GCC diagnostic ignored "-Wunknown-pragmas"
 #endif
 
-// #pragma region crim_remove_reference
+/**
+ * BEGIN: integral_constant -*--------------------------------------------------
+*/
+
+namespace crim {
+    template<typename T, T t_comptime>
+    struct integral_constant;
+}
+
+template<typename T, T t_comptime>
+struct crim::integral_constant {
+    /**
+     * Use this to extract the template parameter `T` type.
+     */
+    using value_type = T;
+    
+    /**
+     * Use this to extract the template instance type.
+     */
+    using type = integral_constant<value_type, t_comptime>;
+    
+    /**
+     * Use this to extract the template parameter `t_comptime` value.
+     */
+    static constexpr value_type value = t_comptime;
+    
+    constexpr value_type operator()() const noexcept
+    {
+        return value;
+    }
+};
+
+namespace crim {
+    using true_type = integral_constant<bool, true>;
+    using false_type = integral_constant<bool, false>;
+    template<bool b_comptime>
+    using bool_constant = integral_constant<bool, b_comptime>;
+};
+
+/**
+ * END: integral_constant -*----------------------------------------------------
+*/
+
+/**
+ * BEGIN: remove_cv -*----------------------------------------------------------
+*/
+
+namespace crim {
+    template<typename T>
+    struct remove_cv;
+};
+
+/**
+ * Non-specialized. The real work is in the specializations, see below.
+ */
+template<typename T>
+struct crim::remove_cv {
+    using type = T;
+};
+
+template<typename T>
+struct crim::remove_cv<const T> {
+    using type = T;
+};
+
+template<typename T>
+struct crim::remove_cv<volatile T> {
+    using type = T;
+};
+
+template<typename T>
+struct crim::remove_cv<const volatile T> {
+    using type = T;
+};
+
+/**
+ * END: remove_cv -*------------------------------------------------------------
+*/
+
 /**
  * BEGIN: remove_reference -*---------------------------------------------------
  */
@@ -29,25 +107,18 @@ namespace crim {
 };
 
 /**
- * @brief   "Base" version, although rather pointless on its own for immediate types.
- *          This is meant more for completeness so that it just works.
+ * The real work is in the specializations, see below.
  */
 template<class T>
 struct crim::remove_reference {
     using type = T;
 };
 
-/**
- * @brief   Specialization to extract the raw type from lvalue references.
- */
 template<class T>
 struct crim::remove_reference<T&> {
     using type = T;
 };
 
-/**
- * @brief   Specialization to extract the raw type from rvalue references.
- */
 template<class T>
 struct crim::remove_reference<T&&> {
     using type = T;
@@ -56,9 +127,15 @@ struct crim::remove_reference<T&&> {
 /**
  * END: remove_reference  -*----------------------------------------------------
  */
-// #pragma endregion crim_remove_reference
 
 namespace crim {
+    /**
+     * @brief   Templated helper type alias for ease of use.
+     *          See `/usr/include/c++/12/type_traits`.
+     */
+    template<typename T>
+    using remove_cv_t = typename remove_cv<T>::type;
+
     /**
      * @brief   Templated helper type which is somewhat nicer to use.
      *          Functinally no difference from `remove_reference<T>::type`.
