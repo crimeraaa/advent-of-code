@@ -17,7 +17,7 @@ part1 :: proc(data: Data) {
         if ok {
             safe += 1
         }
-        fmt.printfln("%v = %v (Error: %v)", report.values, ok, error)
+        fmt.printfln("%v = %v (Error: %v)", report, ok, error)
     }
     fmt.printfln("There are %i safe reports.", safe)
 }
@@ -31,7 +31,7 @@ out_index:
 --------
  */
 report_check :: proc(report: Report, out_index: ^int = nil) -> (is_safe: bool, error: Error) {
-    left, right    := report.values[:report.levels - 1], report.values[1:]
+    left, right    := report[:len(report) - 1], report[1:]
     start_order, _ := order_check(left[0], right[0])
 
     // fmt.print("\tcomparing: ")

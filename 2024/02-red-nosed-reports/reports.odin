@@ -14,11 +14,7 @@ Data :: struct {
     text: string,
 }
 
-Report :: struct {
-    values: []int,
-    levels: int,
-    line: string,
-}
+Report :: []int
 
 Order :: enum {
     Equal = 0,
@@ -98,13 +94,7 @@ data_fill :: proc(data: ^Data) {
             value, _ := strconv.parse_int(item)
             append(&data.values, value)
         }
-        values := data.values[prev_n:len(data.values)]
-        report: Report = {
-            values = values,
-            levels = len(values),
-            line = line,
-        }
-        append(&data.reports, report)
+        append(&data.reports, data.values[prev_n:len(data.values)])
     }
 }
 

@@ -21,21 +21,16 @@ part2 :: proc(data: Data) {
         if ok {
             safe += 1
         }
-        fmt.printfln("%v = %v (Error: %v @ level %i)", report.values, ok, error, index)
+        fmt.printfln("%v = %v (Error: %v @ level %i)", report, ok, error, index)
     }
     fmt.printfln("There are %i safe reports.", safe)
 }
 
 @(private="file")
 secondary_check :: proc(report: Report, index: ^int, allocator := context.allocator) -> (is_safe: bool, err: Error) {
-    buffer := slice.clone_to_dynamic(report.values[:], allocator)
+    buffer := slice.clone_to_dynamic(report[:], allocator)
     defer delete(buffer)
     ordered_remove(&buffer, index^)
     fmt.printfln("\tsans [%v]: %v", index^, buffer[:])
-    dummy: Report = {
-        values = buffer[:],
-        levels = len(buffer),
-        line   = "",
-    }
-    return report_check(dummy, index)
+    return report_check(buffer[:], index)
 }
