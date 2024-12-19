@@ -44,7 +44,7 @@ main :: proc() {
     
     data := data_create(string(raw_bytes))
     defer data_destroy(&data)
-    data_fill(&data)
+    // data_fill(&data)
     // data_print_reports(data)
     
     when PART == 1 {
@@ -73,13 +73,15 @@ order_check :: proc(x, y: int) -> (order: Order, in_range: bool) {
     lines = 5
     spaces = 20
  */
-data_create :: proc(text: string, allocator := context.allocator) -> Data {
+data_create :: proc(text: string, allocator := context.allocator) -> (data: Data) {
     lines, spaces := strings.count(text, "\n"), strings.count(text, " ")
-    return {
+    data = {
         values  = make([dynamic]int, 0, lines + spaces, allocator),
         reports = make([dynamic]Report, 0 ,lines, allocator),
         text    = text,
     }
+    data_fill(&data)
+    return data
 }
 
 data_destroy :: proc(data: ^Data) {
