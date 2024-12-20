@@ -5,6 +5,7 @@ import "core:math"
 import "core:os"
 import "core:strings"
 import "core:strconv"
+import "core:mem"
 
 PART :: #config(PART, 1)
 Pair :: distinct [2]int
@@ -30,6 +31,29 @@ Error :: enum {
 }
 
 main :: proc() {
+    // https://gist.github.com/karl-zylinski/4ccf438337123e7c8994df3b03604e33
+    when ODIN_DEBUG {
+        track: mem.Tracking_Allocator
+        mem.tracking_allocator_init(&track, context.allocator)
+        context.allocator = mem.tracking_allocator(&track)
+
+        defer {
+            if n := len(track.allocation_map); n > 0 {
+                fmt.eprintfln("=== %v allocations not freed: ===", n)
+                for _, entry in track.allocation_map {
+                    fmt.eprintfln("- %v bytes @ %v", entry.size, entry.location)
+                }
+            }
+            if n := len(track.bad_free_array); n > 0 {
+                fmt.eprintfln("=== %v incorrect frees: ===", n)
+                for entry in track.bad_free_array {
+                    fmt.eprintfln("- %p @ %v", entry.memory, entry.location)
+                }
+            }
+            mem.tracking_allocator_destroy(&track)
+        }
+    }
+
     filename := "sample.txt" if len(os.args) <= 1 else os.args[1]
     raw_bytes, ok := os.read_entire_file(filename)
     if !ok {
