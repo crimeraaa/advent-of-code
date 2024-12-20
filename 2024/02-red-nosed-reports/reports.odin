@@ -7,17 +7,17 @@ import "core:strings"
 import "core:strconv"
 
 PART :: #config(PART, 1)
-    
+Pair :: distinct [2]int
 Data :: struct {
     values: [dynamic]int,       // Pseudo 2D array
     reports: [dynamic]Report,   // Series of views into `values`
-    text: string,
 }
 
 Report :: []int
 
 Order :: enum {
-    Equal = 0,
+    None = 0,
+    Equal,
     Increasing,
     Decreasing,
 }
@@ -40,8 +40,6 @@ main :: proc() {
     
     data := data_create(string(raw_bytes))
     defer data_destroy(&data)
-    // data_fill(&data)
-    // data_print_reports(data)
     
     when PART == 1 {
         part1(data)
@@ -52,14 +50,20 @@ main :: proc() {
     }
 }
 
-order_check :: proc(x, y: int) -> (order: Order, in_range: bool) {
+order_get :: proc(x, y: int, prev := Order.None) -> (order: Order, error: Error) {
     diff := x - y
+    in_range := 1 <= abs(diff) && abs(diff) <= 3
     switch {
-        case diff > 0:  order = .Decreasing
-        case diff < 0:  order = .Increasing
-        case:           order = .Equal
+        case diff > 0: order = .Decreasing
+        case diff < 0: order = .Increasing
+        case:          order = .Equal
     }
-    in_range = 1 <= abs(diff) && abs(diff) <= 3
+    switch {
+        case order == .Equal, prev == .Equal:   error = .Equal_Items
+        case order != prev:                     error = .Unequal_Orders
+        case !in_range:                         error = .Large_Differences
+        case:
+    }
     return
 }
 
@@ -74,28 +78,23 @@ data_create :: proc(text: string, allocator := context.allocator) -> (data: Data
     data = {
         values  = make([dynamic]int, 0, lines + spaces, allocator),
         reports = make([dynamic]Report, 0 ,lines, allocator),
-        text    = text,
     }
-    data_fill(&data)
-    return data
-}
-
-data_destroy :: proc(data: ^Data) {
-    delete(data.values)
-    delete(data.reports)
-}
-
-data_fill :: proc(data: ^Data) {
-    text := data.text    
-    for line in strings.split_lines_iterator(&text) {
+    iterator := text
+    for line in strings.split_lines_iterator(&iterator) {
         start := line
-        prev_n := len(data.values)
+        prev_n := len(data.values) // save here as 'len()' updates via 'append()'
         for item in strings.split_by_byte_iterator(&start, ' ') {
             value, _ := strconv.parse_int(item)
             append(&data.values, value)
         }
         append(&data.reports, data.values[prev_n:len(data.values)])
     }
+    return data
+}
+
+data_destroy :: proc(data: ^Data) {
+    delete(data.values)
+    delete(data.reports)
 }
 
 data_print_reports :: proc(data: Data) {

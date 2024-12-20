@@ -13,11 +13,12 @@ Determine how many 'safe' reports there are. A 'safe' report is:
 part1 :: proc(data: Data) {
     safe := 0
     for report in data.reports {
-        ok, error := report_check(report)
+        index: Pair = {-1, -1}
+        ok, error := report_check(report, &index)
         if ok {
             safe += 1
         }
-        fmt.printfln("%v = %v (Error: %v)", report, ok, error)
+        fmt.printfln("%v = %v (Error: %v @ level %v)", report, ok, error, index)
     }
     fmt.printfln("There are %i safe reports.", safe)
 }
@@ -30,25 +31,21 @@ out_index:
     where we encountered an error.
 --------
  */
-report_check :: proc(report: Report, out_index: ^int = nil) -> (is_safe: bool, error: Error) {
-    left, right    := report[:len(report) - 1], report[1:]
-    start_order, _ := order_check(left[0], right[0])
+report_check :: proc(report: Report, out_index: ^Pair = nil) -> (is_safe: bool, error: Error) {
+    left, right := report[:len(report) - 1], report[1:]
+    
+    for start_value, start_index in left {
+        start_order, _ := order_get(start_value, right[start_index])
 
-    // fmt.print("\tcomparing: ")
-    for x, i in left {
-        // fmt.printfln("\t%v: [%v, %v]", i, x, right[i])
-        switch order, in_range := order_check(x, right[i]); {
-            case order == .Equal:       error = .Equal_Items
-            case !in_range:             error = .Large_Differences
-            case order != start_order:  error = .Unequal_Orders
-        }
-        if error != .None {
-            if out_index != nil {
-                out_index^ = i
+        for index in start_index..<len(right) {
+            if _, error = order_get(left[index], right[index], start_order); error != .None {
+                if out_index != nil {
+                    out_index^ = {index, index + 1}
+                }
+                return false, error
             }
-            return false, error
         }
     }
-    // fmt.println()
+
     return true, .None
 }
