@@ -18,7 +18,25 @@ part2 :: proc(data: Data) {
         count := report_count_errors(report, &index)
         switch count {
             case 0: safe += 1
-            case 1: // TODO
+            case 1:
+                buffer := slice.clone_to_dynamic(report[:], context.allocator)
+                defer delete(buffer)
+                
+                // Restore later when trying the 2nd option
+                tmp := buffer[index.y]
+                ordered_remove(&buffer, index.y)
+                fmt.printfln("\tTry: %v", buffer)
+                if report_count_errors(buffer[:]) == 0 {
+                    safe += 1
+                    count -= 1
+                } else {
+                    buffer[index.x] = tmp
+                    fmt.printfln("\tTry: %v", buffer)
+                    if report_count_errors(buffer[:]) == 0 {
+                        safe += 1
+                        count -= 1
+                    }
+                }
             case:   // We can only remove 1 level, this will always be unsafe.
         }
         fmt.printfln("%v = (%v errors, first @ %v)", report, count, index)
@@ -51,13 +69,4 @@ report_count_errors :: proc(report: Report, out_index: ^Pair = nil) -> (count: i
         }
     }
     return count
-}
-
-@(private="file")
-secondary_check :: proc(report: Report, index: int, allocator := context.allocator) -> (is_safe: bool, err: Error) {
-    buffer := slice.clone_to_dynamic(report[:], allocator)
-    defer delete(buffer)
-    ordered_remove(&buffer, index)
-    fmt.printfln("\tsans [%v]: %v", index, buffer[:])
-    return report_check(buffer[:], nil)
 }
