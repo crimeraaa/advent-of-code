@@ -7,6 +7,8 @@ import "core:slice"
 import "core:strings"
 import "core:strconv"
 
+import "core:sys/posix"
+
 PART  :: #config(PART, 1)
 BASE  :: 10
 Lists :: [2][dynamic]int
@@ -23,7 +25,10 @@ main :: proc() {
         }
     }
 
-    lists := read_file_to_lists("sample.txt" if len(os.args) <= 1 else os.args[1])
+    buf: [256]byte
+    fmt.println("CWD:\n", posix.getcwd(raw_data(buf[:]), len(buf)))
+
+    lists := read_file_to_lists("day01/sample.txt" if len(os.args) <= 1 else os.args[1])
     defer {
         delete(lists.x)
         delete(lists.y)

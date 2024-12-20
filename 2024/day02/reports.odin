@@ -54,7 +54,7 @@ main :: proc() {
         }
     }
 
-    filename := "sample.txt" if len(os.args) <= 1 else os.args[1]
+    filename := "day02/sample.txt" if len(os.args) <= 1 else os.args[1]
     raw_bytes, ok := os.read_entire_file(filename)
     if !ok {
         fmt.eprintfln("Failed to read file '%s'!", filename)

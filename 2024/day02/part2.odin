@@ -36,7 +36,7 @@ out_index:
  */
 report_count_errors :: proc(report: Report, out_index: ^Pair = nil) -> (count: int) {
     left, right    := report[:len(report) - 1], report[1:]
-    start_order, _ := order_get(left[0], right[0], .Equal)
+    start_order, _ := order_get(left[0], right[0])
 
     noted := false
     for value, index in right {
@@ -44,7 +44,7 @@ report_count_errors :: proc(report: Report, out_index: ^Pair = nil) -> (count: i
             if !noted {
                 noted = true
                 if out_index != nil {
-                    out_index ^= {index, index + 1}
+                    out_index^ = {index, index + 1}
                 }
             }
             count += 1
