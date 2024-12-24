@@ -4,47 +4,59 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 
-PART :: #config(PART, 1)
+PART  :: #config(PART, 2)
+INPUT :: #load("input.txt", string)
+
+#assert(1 <= PART && PART <= 2)
     
 main :: proc() {
-    filename := "day03/sample.txt" if len(os.args) == 1 else os.args[1]
-    raw_bytes, ok := os.read_entire_file(filename, context.allocator)
-    if !ok {
-        fmt.eprintfln("Failed to read file %q!", filename)
-        return
-    }
-    defer delete(raw_bytes)
-
     // consumed, lookahead = {}, {}
-    parser := parser_create(string(raw_bytes))
+    parser := parser_create(INPUT)
 
     // consumed, lookahead = lookahead, scan_token()
     parser_advance(&parser)
 
-    fmt.println(parser.lexer.data)
-    
-    result := 0
-    for !parser_check_token(&parser, .Eof) {
+    fmt.println("PART:", PART, parser.lexer.data)
+    fmt.printfln("Result: %v", part1(&parser) when PART == 1 else part2(&parser))
+}
+
+part1 :: proc(parser: ^Parser) -> (result: int) {
+    for !parser_check_token(parser, .Eof) {
         token_print(parser.lookahead)
-
-        // Keep going until we probably have a preamble: "mul"
-        if !parser_match_token(&parser, .Mul) {
-            // parser_print(parser)
-            parser_advance(&parser)
-            continue
-        }
-        
-        // '(' <number> ',' <number> ')'
-        parser_match_token(&parser, .Left_Paren)  or_continue
-
-        args: [2]int
-        args.x = parser_parse_number(&parser)     or_continue
-        parser_match_token(&parser, .Comma)       or_continue
-        args.y = parser_parse_number(&parser)     or_continue
-        parser_match_token(&parser, .Right_Paren) or_continue
         
         // fmt.printfln("\tmul(%v, %v)", args.x, args.y)
-        result += args.x * args.y
+        product, ok := parser_parse_mul(parser)
+        if ok {
+            fmt.printfln("result = %v + %v", result, product)
+            result += product
+        } else {
+            parser_advance(parser)
+        }
     }
-    fmt.printfln("Result: %v", result)
+    return
+}
+
+part2 :: proc(parser: ^Parser) -> (result: int) {
+    enabled := true
+    for !parser_check_token(parser, .Eof) {
+        token_print(parser.lookahead)
+
+        product, ok := parser_parse_mul(parser)
+        if ok {
+            if enabled {
+                fmt.printfln("\tresult = %v + %v", result, product)
+                result += product
+            }
+            continue
+        }
+        tmp: bool
+        tmp, ok = parser_parse_do_dont(parser)
+        if ok {
+            fmt.printfln("\tmul %s", "enabled" if tmp else "disabled")
+            enabled = tmp
+        } else {
+            parser_advance(parser)
+        }
+    }
+    return
 }
