@@ -1,96 +1,98 @@
 package aoc
 
 import "core:strings"
-import "core:unicode"
 
 Lexer :: struct {
-    data, current: string,
-    index: int,
+    data: string,
+    start, stop, end: int,
 }
 
-Token :: struct {
-    lexeme: string,
-    type: Token_Type,
-}
-
-Token_Type :: enum {
-    Invalid = 0,    // Anything that does not fit anything below.
-    Word,           // A sequnce of the ASCII characters 'a' to 'z' or 'A' to 'Z'.
-    Number,         // A sequence of the ASCII characters '0' to '9'.
-    Left_Paren,     // The ASCII character '('.
-    Right_Paren,    // The ASCII character ')'.
-    Comma,          // The ASCII character ','.
-    Eof,            // Not a character per se, acts more like a signal.
-}
-
-lexer_create :: proc(memory: string) -> (lexer: Lexer) {
-    return {data = memory, current = memory, index = 0}
+lexer_create :: proc(memory: string) -> Lexer {
+    return {data = memory, start = 0, stop = 0, end = len(memory) - 1}
 }
 
 lexer_scan_token :: proc(lexer: ^Lexer) -> Token {
     if is_at_end(lexer) {
-        return create_token(lexer, .Eof)
+        return token_create(lexer, .Eof)
     }
     r := peek_current(lexer)
-    if unicode.is_alpha(r) {
-        advance_current(lexer)
-        consume_sequence(lexer, unicode.is_alpha)
-        return create_token(lexer, .Word)
-    } else if unicode.is_digit(r) {
-        advance_current(lexer)
-        consume_sequence(lexer, unicode.is_digit)
-        return create_token(lexer, .Number)
+    
+    if consume_sequence(lexer, is_alpha) > 0 {
+        token := token_create(lexer, .Invalid)
+        switch {
+            case strings.has_suffix(token.lexeme, "mul"):   token.type = .Mul
+            case strings.has_suffix(token.lexeme, "do"):    token.type = .Do
+            case strings.has_suffix(token.lexeme, "don't"): token.type = .Dont
+            case:
+        }
+        return token
+    } else if consume_sequence(lexer, is_digit) > 0 {
+        return token_create(lexer, .Number)
     }
-
+    
     advance_current(lexer)
     switch r {
-        case '(': return create_token(lexer, .Left_Paren)
-        case ')': return create_token(lexer, .Right_Paren)
-        case ',': return create_token(lexer, .Comma)
+        case '(': return token_create(lexer, .Left_Paren)
+        case ')': return token_create(lexer, .Right_Paren)
+        case ',': return token_create(lexer, .Comma)
         case:
-            consume_sequence(lexer, not_alpha_or_digit)
-            return create_token(lexer, .Invalid)
+            consume_sequence(lexer, is_not_alnum)
+            return token_create(lexer, .Invalid)
     }
 }
 
 @private
-not_alpha_or_digit :: proc(r: rune) -> bool {
-    return !unicode.is_alpha(r) && !unicode.is_digit(r)
+is_alpha :: proc(r: rune) -> bool {
+    return ('a' <= r && r <= 'z') || ('A' <= r && r <= 'Z') || (r == '_') || (r == '\'')
 }
 
 @private
-consume_sequence :: proc(lexer: ^Lexer, callback: proc(r: rune) -> bool) {
-    for callback(peek_current(lexer)) {
+is_digit :: proc(r: rune) -> bool {
+    return '0' <= r && r <= '9'
+}
+
+@private
+is_not_alnum :: proc(r: rune) -> bool {
+    return !is_alpha(r) && !is_digit(r)
+}
+
+// pls inline
+@private
+consume_sequence :: proc(lexer: ^Lexer, $callback: proc(r: rune) -> bool) -> (count: int) {
+    /* 
+    Note (2024-12-24):
+        We check for is_at_end() because otherwise, if we're in the middle of this loop AS
+        we hit the end, we'd be stuck in an infinite loop.
+     */
+    for callback(peek_current(lexer)) && !is_at_end(lexer) {
         advance_current(lexer)
+        count += 1
     }
     return
 }
 
 @private
-create_token :: proc(lexer: ^Lexer, type: Token_Type) -> (token: Token) {
-    end := len(lexer.data) - len(lexer.current)
-    token.lexeme = lexer.data[lexer.index:end]
+token_create :: proc(lexer: ^Lexer, type: Token_Type) -> (token: Token) {
+    token.lexeme = lexer.data[lexer.start:lexer.stop]
     token.type   = type
-    lexer.index  = end // Update for next token's lexeme to be valid
+    lexer.start  = lexer.stop // Update for next token's lexeme to be valid
     return
 }
 
 /* 
 Note
 --------
- *  Is the current index the very last valid index?
- *  That is, if we were to create a token right now, attempting to use the index
-    along with the calculated end length would result in an empty string?
+* Remember that `lexer.end` is the 0-based last valid index of `lexer.data`.
 --------
  */
 @private
 is_at_end :: proc(lexer: ^Lexer) -> bool {
-    return lexer.index >= len(lexer.data) - 1
+    return lexer.stop >= lexer.end
 }
 
 @private
 peek_current :: proc(lexer: ^Lexer) -> rune {
-    return cast(rune)lexer.current[0]
+    return cast(rune)lexer.data[lexer.stop]
 }
 
 @private
@@ -98,6 +100,6 @@ advance_current :: proc(lexer: ^Lexer) {
     if is_at_end(lexer) {
         return
     }
-    lexer.current = lexer.current[1:]
+    lexer.stop += 1
 }
 
