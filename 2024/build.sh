@@ -14,3 +14,4 @@ if [ -z "$1" ]; then
 fi
 
 odin build "$SCRIPT_DIR/$1" -debug -define:PART=$PART -out:"$SCRIPT_DIR/bin/$1"
+$SCRIPT_DIR/bin/$1
