@@ -16,7 +16,7 @@ lexer_scan_token :: proc(lexer: ^Lexer) -> Token {
         return token_create(lexer, .Eof)
     }
     r := peek_current(lexer)
-    
+
     if consume_sequence(lexer, is_alpha) > 0 {
         token := token_create(lexer, .Invalid)
         switch {
@@ -29,7 +29,7 @@ lexer_scan_token :: proc(lexer: ^Lexer) -> Token {
     } else if consume_sequence(lexer, is_digit) > 0 {
         return token_create(lexer, .Number)
     }
-    
+
     advance_current(lexer)
     switch r {
         case '(': return token_create(lexer, .Left_Paren)
@@ -59,7 +59,7 @@ is_not_alnum :: proc(r: rune) -> bool {
 // pls inline
 @private
 consume_sequence :: proc(lexer: ^Lexer, $callback: proc(r: rune) -> bool) -> (count: int) {
-    /* 
+    /*
     Note (2024-12-24):
         We check for is_at_end() because otherwise, if we're in the middle of this loop AS
         we hit the end, we'd be stuck in an infinite loop.
@@ -79,7 +79,7 @@ token_create :: proc(lexer: ^Lexer, type: Token_Type) -> (token: Token) {
     return
 }
 
-/* 
+/*
 Note
 --------
 * Remember that `lexer.end` is the 0-based last valid index of `lexer.data`.

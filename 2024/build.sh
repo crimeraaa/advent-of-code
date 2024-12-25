@@ -13,5 +13,4 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
-odin build "$SCRIPT_DIR/$1" -debug -define:PART=$PART -out:"$SCRIPT_DIR/bin/$1"
-$SCRIPT_DIR/bin/$1
+odin run "$SCRIPT_DIR/$1" -debug -define:PART=$PART -out:"$SCRIPT_DIR/bin/$1"

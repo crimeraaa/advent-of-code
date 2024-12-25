@@ -8,7 +8,7 @@ PART  :: #config(PART, 2)
 INPUT :: #load("input.txt", string)
 
 #assert(1 <= PART && PART <= 2)
-    
+
 main :: proc() {
     // consumed, lookahead = {}, {}
     parser := parser_create(INPUT)
@@ -23,7 +23,7 @@ main :: proc() {
 part1 :: proc(parser: ^Parser) -> (result: int) {
     for !parser_check_token(parser, .Eof) {
         token_print(parser.lookahead)
-        
+
         // fmt.printfln("\tmul(%v, %v)", args.x, args.y)
         product, ok := parser_parse_mul(parser)
         if ok {

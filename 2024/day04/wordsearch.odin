@@ -1,59 +1,43 @@
 package aoc
 
 import "core:fmt"
-import "core:strings"
 
-PART  :: #config(PART, 1)
-INPUT :: #load("sample.txt", string)
-
-Vector :: distinct [2]int
-
-Direction :: enum {
-    North,
-    South,
-    East,
-    West,
-}   
-
-/* 
-Brief
---------
- *  Use these constant vectors to perform matrix math at a higher level.
---------
-
-Note
---------
-*   Our word search is conceptually arranged such that [0, 0] is the top left.
-```
-    x   [0]    [1]    [2]    ...    [m]
- y      
-[0]     [0, 0] [1, 0] [2, 0]
-[1]     [0, 1] [1, 1] [2, 1]
-[2]     [0, 2] [1, 2] [2, 2]
-...
-[n]     [0, n] [1, n] [2, n]        [m, n]
-```
---------
- */
-Direction_Vectors :: [Direction]Vector {
-    .North = { 0, -1},
-    .East  = {+1,  0},
-    .South = { 0, +1},
-    .West  = {-1,  0},
-}
-
-Direction_Set :: bit_set[Direction]
+PART :: #config(PART, 1)
 
 main :: proc() {
-    lines := make([dynamic]string, 0, strings.count(INPUT, "\n"), context.allocator)
-    defer delete(lines)
+    frame := frame_make(#load("input.txt", string), context.allocator)
+    defer frame_destroy(&frame)
 
-    dummy := INPUT
-    for line in strings.split_lines_iterator(&dummy) {
-        append(&lines, line)
+    frame_print(&frame)
+
+    count := 0
+    for char, index in frame.grid {
+        // Can't possibly start "XMAS"?
+        if char != 'X' {
+            continue
+        }
+        cells: [4]rune
+        cells[0] = char
+
+        // Try to find adjacent occurences of "MAS"
+        pos: Vector = index_to_vector(index, &frame)
+        for dir in Direction {
+            cur_pos := pos
+            cells[1] = cell_try('M', &cur_pos, dir, &frame) or_continue
+            cells[2] = cell_try('A', &cur_pos, dir, &frame) or_continue
+            cells[3] = cell_try('S', &cur_pos, dir, &frame) or_continue
+            fmt.println(pos, "=>", cur_pos)
+            count += 1
+        }
     }
-    
-    for line, number in lines {
-        fmt.printfln("%v: %v", number, line)
+
+    fmt.printfln("%q occurs %v times.", "XMAS", count)
+}
+
+cell_try :: proc(expected: rune, cur_pos: ^Vector, dir: Direction, frame: ^Frame) -> (cell: rune, ok: bool) {
+    vector_update(cur_pos, dir, frame) or_return
+    if r, ok2 := frame_at(frame, cur_pos^); ok2 {
+        return r, r == expected
     }
+    return 0, false
 }

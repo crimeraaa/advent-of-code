@@ -14,10 +14,10 @@ part1 :: proc(lists: ^Lists, allocator := context.allocator) {
     slice.sort(lists.y[:])
 
     // fmt.printfln("[SORTED]:\n%v\n%v", lists.x, lists.y)
-    
+
     diffs := make([dynamic]int, len(lists.x))
     defer delete(diffs)
-    
+
     for left, index in lists.x {
         right := lists.y[index]
         diffs[index] = abs(left - right)

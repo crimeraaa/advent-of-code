@@ -3,7 +3,7 @@ package aoc
 import "core:fmt"
 import "core:slice"
 
-/* 
+/*
 Description
 --------
 When we encounter a Report with an error, we need to determine which 1 offending
@@ -21,7 +21,7 @@ part2 :: proc(data: Data) {
             case 1:
                 buffer := slice.clone_to_dynamic(report[:], context.allocator)
                 defer delete(buffer)
-                
+
                 // Restore later when trying the 2nd option
                 tmp := buffer[index.y]
                 ordered_remove(&buffer, index.y)
@@ -44,7 +44,7 @@ part2 :: proc(data: Data) {
     fmt.printfln("There are %i safe reports.", safe)
 }
 
-/* 
+/*
 Parameters
 --------
 out_index:

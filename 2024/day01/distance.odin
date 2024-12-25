@@ -51,12 +51,12 @@ read_file_to_lists :: proc(file_name: string, allocator := context.allocator) ->
         return nil
     }
     defer delete(raw_data)
-    
+
     // Treat raw bytes as UTF-8 string (human-readable)
     data := string(raw_data)
     count := strings.count(data, "\n")
     lists: Lists
-    
+
     // 0 initial length so we can append nicely, but non-zero backing capacity.
     lists.x = make([dynamic]int, 0, count)
     lists.y = make([dynamic]int, 0, count)

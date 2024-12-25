@@ -2,7 +2,7 @@ package aoc
 
 import "core:fmt"
 
-/* 
+/*
 Note
 --------
 Determine how many 'safe' reports there are. A 'safe' report is:
@@ -23,17 +23,17 @@ part1 :: proc(data: Data) {
     fmt.printfln("There are %i safe reports.", safe)
 }
 
-/* 
+/*
 Parameters
 --------
-out_index: 
+out_index:
     C-style out-parameter. Will hold the 0-based index of the first level
     where we encountered an error.
 --------
  */
 report_check :: proc(report: Report, out_index: ^Pair = nil) -> (is_safe: bool, error: Error) {
     left, right := report[:len(report) - 1], report[1:]
-    
+
     for start_value, start_index in left {
         start_order, _ := order_get(start_value, right[start_index])
 

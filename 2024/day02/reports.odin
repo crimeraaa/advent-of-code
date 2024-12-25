@@ -61,10 +61,10 @@ main :: proc() {
         return
     }
     defer delete(raw_bytes)
-    
+
     data := data_create(string(raw_bytes))
     defer data_destroy(&data)
-    
+
     when PART == 1 {
         part1(data)
     } else when PART == 2 {
@@ -91,9 +91,9 @@ order_get :: proc(x, y: int, prev := Order.None) -> (order: Order, error: Error)
     return
 }
 
-/* 
+/*
     Given: "1 2 3 4 5\n6 7 8 9 10\n11 12 13 14 15\n16 17 18 19 20\n21 22 23 24 25\n<EOF>"
-    
+
     lines = 5
     spaces = 20
  */
