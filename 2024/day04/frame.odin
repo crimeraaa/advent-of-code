@@ -67,6 +67,7 @@ frame_print :: proc(frame: ^Frame) {
 }
 
 frame_at :: proc(frame: ^Frame, pos: Vector) -> (cell: rune, ok: bool) {
+    vector_is_in_range(pos, frame) or_return
     if i := vector_to_index(pos, frame); 0 <= i && i < len(frame.grid) {
         return cast(rune)frame.grid[i], true
     }

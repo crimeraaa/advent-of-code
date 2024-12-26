@@ -35,6 +35,15 @@ direction_vectors: [Direction]Vector = {
     .Southwest = {-1, +1},  .Southeast = {+1, +1},
 }
 
+direction_diagonals := [?]Direction{.Northwest, .Northeast, .Southwest, .Southeast}
+
+direction_complements: [Direction]Direction = {
+    .North     = .South,     .East      = .West,
+    .South     = .North,     .West      = .South,
+    .Northwest = .Southeast, .Northeast = .Southwest,
+    .Southwest = .Northeast, .Southeast = .Northwest
+}
+
 /*
     dimensions: [rows=3,cols=2]
         [0,0] [1,0] [2,0]
